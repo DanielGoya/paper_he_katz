@@ -42,7 +42,14 @@ global D_ATLAS_CP  "$ALMACEN/Atlas of Economic Complexity/hs92_country_product_y
 global D_ATLAS_ECI "$ALMACEN/Atlas of Economic Complexity/growth_proj_eci_rankings.csv"
 global D_ENIA      "$ALMACEN/ENIA panel/dta/datos_seguimiento_enia.dta"
 global D_ENE       "$ALMACEN/ENE"
-global D_SII       "$ALMACEN/SII/Pub_Empresas"
+global D_ESI       "$ALMACEN/ESI"
+* Estadísticas de Empresas del SII. La carpeta `Pub_Empresas` es la extracción de
+* julio de 2019 y llega a 2018; la de 2026-08 llega a 2024 y es la que se usa. Los
+* originales vienen en .xlsb, que Stata no lee: al lado hay un .csv derivado.
+global D_SII       "$ALMACEN/SII/2026.08.10 Estadisticas de empresas"
+global D_SII_RUBR  "$D_SII/PUB_TRAM_RUBR.csv"
+global D_SII_ACT   "$D_SII/PUB_TRAM_ACT.csv"
+global D_SII_2019  "$ALMACEN/SII/Pub_Empresas"
 
 * Bajadas nuevas de este proyecto (van al almacén, no al repo)
 global D_WDI       "$ALMACEN/World Bank WDI/2026-08"

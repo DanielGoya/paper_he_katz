@@ -50,6 +50,12 @@ do "$SRC/06_complejidad_exportadora.do"
 * Bloque D · Contraste de la narrativa de Katz con los datos
 do "$SRC/07_contraste_narrativa.do"
 
+* Capa de productividad · rama × tamaño de empresa (SII, 2005-2024)
+do "$SRC/08_productividad_sii.do"
+
+* Bloque G · El «Chile moderno» definido por productividad, en tres capas
+do "$SRC/09_moderno_productividad.do"
+
 display as text _n "{hline 78}"
 display as text "Pipeline terminado. Salidas en: $OUT"
 display as text "{hline 78}"

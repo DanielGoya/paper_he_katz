@@ -197,6 +197,11 @@ foreach a in 2022 2024 {
     * Rama detallada del año (clasificación CAENES de Casen)
     gen long rama_det = rama4 if rama4 > 0
 
+    * Sección CIIU rev.4 (A-U). Es la llave con la que se pega la capa de
+    * productividad del SII, que publica por rubro = sección. En 2000 no existe:
+    * esa encuesta trae CIIU rev.2 y el SII arranca en 2005.
+    gen byte seccion = rama1 if inrange(rama1, 1, 21)
+
     gen byte contrato_d = .
     replace contrato_d = 1 if contrato == 1
     replace contrato_d = 0 if contrato == 0
@@ -217,8 +222,8 @@ foreach a in 2022 2024 {
     gen byte pobre = inlist(pobreza, 1, 2) if !missing(pobreza)
 
     keep anio region expr sexo edad escolaridad ocupacion categoria tamano rama9 ///
-         rama_det calificado contrato_d cotiza_d reg_sii y_ocup_prin y_trabajo ///
-         y_pc_hogar linea_pobreza pobre
+         rama_det seccion calificado contrato_d cotiza_d reg_sii y_ocup_prin ///
+         y_trabajo y_pc_hogar linea_pobreza pobre
 
     if `primero_rec' == 1 {
         save "`casen_rec'", replace
@@ -262,6 +267,24 @@ label define ramalbl 1 "Agricultura, silvicultura y pesca" ///
                      8 "Servicios financieros y a empresas" ///
                      9 "Servicios comunales, sociales y personales"
 label values rama9 ramalbl
+
+* Banda de empleo comparable con la ESI y con la capa de productividad del SII:
+* 1 menos de 5 · 2 de 5 a 10 · 3 entre 11 y 49 · 4 entre 50 a 199 · 5 200 y más.
+* Los seis tramos de Casen se colapsan a estos cinco.
+gen byte banda = .
+replace banda = 1 if inlist(tamano, 1, 2)      // 1 persona; 2 a 5
+replace banda = 2 if tamano == 3               // 6 a 9
+replace banda = 3 if tamano == 4               // 10 a 49
+replace banda = 4 if tamano == 5               // 50 a 199
+replace banda = 5 if tamano == 6               // 200 y más
+label define bandalbl 1 "Menos de 5" 2 "De 5 a 10" 3 "Entre 11 y 49" ///
+                      4 "Entre 50 y 199" 5 "200 y más"
+label values banda bandalbl
+
+label define seclbl 1 "A" 2 "B" 3 "C" 4 "D" 5 "E" 6 "F" 7 "G" 8 "H" 9 "I" 10 "J" ///
+                    11 "K" 12 "L" 13 "M" 14 "N" 15 "O" 16 "P" 17 "Q" 18 "R" 19 "S" ///
+                    20 "T" 21 "U"
+label values seccion seclbl
 
 * ---------------------------------------------------------------------------
 * Estrato de productividad, en la tradición PREALC/CEPAL
