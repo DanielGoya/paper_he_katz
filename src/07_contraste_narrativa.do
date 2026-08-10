@@ -4,7 +4,7 @@
 *! Este bloque no busca refutar a Katz sino ANCLAR el capítulo. Produce las cifras
 *! contra las cuales se contrastan afirmaciones concretas del ensayo, de modo que lo
 *! que quede escrito resista una lectura crítica. Las divergencias que aparecen están
-*! documentadas en docs/2026.08.10 contraste narrativa Katz vs datos.md.
+*! documentadas en la nota del vault «2026-08-10-contraste-narrativa-katz-vs-datos».
 *!
 *! Afirmaciones que se contrastan acá:
 *!   D1 · «el sector informal absorbe 50% o más de la población ocupada»

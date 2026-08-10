@@ -29,7 +29,9 @@ global OUT         "$ARTEF/datos/output"
 global SCRATCH     "$ARTEF/datos/scratch"
 
 global SRC         "$REPO/src"
-global DOCS        "$REPO/docs"
+* Los documentos escritos NO viven en el repo: son notas y borradores, y el
+* spec/ubicacion.md §1 los manda al vault de la entidad.
+global DOCS        "$A_dropbox/Obsidian/Trabajo/paper-he-katz"
 
 * ---------------------------------------------------------------------------
 * 3. Punteros a las bases del almacén (referenciar, nunca copiar)
