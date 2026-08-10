@@ -1,0 +1,20 @@
+# Datos y salidas: NUNCA entran al repo (MEMORY.md §Proyectos con datos).
+# El script lee datos desde el árbol de Dropbox y escribe las tablas/figuras hacia la
+# carpeta del manuscrito. Esto es red de seguridad por si alguna ruta apunta hacia adentro.
+data/
+datos/
+output/
+salidas/
+*.dta
+*.csv.gz
+
+# Entorno y credenciales
+.env
+.venv/
+venv/
+__pycache__/
+.Rhistory
+.Rproj.user/
+
+# Config de máquina de los agentes (no viaja entre PCs)
+.claude/settings.local.json
