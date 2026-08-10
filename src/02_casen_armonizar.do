@@ -6,9 +6,10 @@
 *!   Casen 2000, base principal + base complementaria de ingresos con METODOLOGÍA
 *!     ACTUAL (variables *_mn), que es la que hace comparables ingresos y pobreza
 *!     con las Casen recientes.
-*!   Casen 2022, base nacional en Stata.
+*!   Casen 2022 y Casen 2024, bases nacionales en Stata. 2024 es el punto de
+*!     «actualidad» que pide la carta; 2022 se conserva como punto intermedio.
 *!   Ministerio de Desarrollo Social y Familia. Encuesta de Caracterización
-*!     Socioeconómica Nacional (Casen), 2000 y 2022.
+*!     Socioeconómica Nacional (Casen), 2000, 2022 y 2024.
 *!
 *! Decisiones de armonización, todas explícitas y verificables abajo:
 *!   · Rama: 9 grandes divisiones CIIU rev.2. En 2000 vienen dadas (`ramar`); en 2022
@@ -119,68 +120,117 @@ tempfile casen00
 save "`casen00'"
 
 * ===========================================================================
-* 2. Casen 2022
+* 2. Casen 2022 y Casen 2024
+*    Comparten cuestionario y codificación (rama1/rama4 CAENES, o15, o25, o16),
+*    así que se procesan con el mismo código. La única diferencia es el nombre del
+*    ingreso per cápita del hogar: `ypc` en 2022, `ypchtotcor` en 2024.
 * ===========================================================================
-use region expr sexo edad esc activ o15 o25 o16 rama1 rama4 oficio1_08 ///
-    contrato cotiza yoprcor ytrabajocor ypc lp pobreza ///
-    using "$D_CASEN22", clear
+tempfile casen_rec
+local primero_rec = 1
 
-gen int anio = 2022
+foreach a in 2022 2024 {
 
-gen byte ocupacion = activ                                // 1 ocupado 2 desoc 3 inactivo
+    if `a' == 2022  local archivo "$D_CASEN22"
+    if `a' == 2024  local archivo "$D_CASEN24"
+    confirm file "`archivo'"
 
-gen byte categoria = .
-replace categoria = 1 if o15 == 1
-replace categoria = 2 if o15 == 2
-replace categoria = 3 if o15 == 3
-replace categoria = 4 if o15 == 4
-replace categoria = 5 if o15 == 5
-replace categoria = 6 if inlist(o15, 6, 7)
-replace categoria = 7 if o15 == 9                        // ojo: en 2022 el 9 es familiar
-replace categoria = 8 if o15 == 8                        // y el 8 es FF.AA.
+    * Dos nombres cambian entre encuestas y se resuelven leyendo el varlist antes
+    * de cargar el archivo:
+    *   · ingreso per cápita del hogar: `ypc` en 2022, `ypchtotcor` en 2024;
+    *   · pobreza: Casen 2024 estrenó una línea nueva (canasta de la VIII EPF) que
+    *     NO es comparable con 2000 ni 2022 —da 17,3% contra 4,9%—. La encuesta trae
+    *     además `pobreza_2013` y `lp_2013`, que sí siguen la metodología vigente
+    *     desde 2013, y son las que se usan acá.
+    quietly describe using "`archivo'", varlist
+    local vl " `r(varlist)' "
 
-gen byte tamano = o25 if inrange(o25, 1, 6)
+    local ypcvar "ypchtotcor"
+    if strpos("`vl'", " ypc ") > 0  local ypcvar "ypc"
 
-* Rama: 21 secciones CIIU rev.4 -> 9 divisiones CIIU rev.2
-gen byte rama9 = .
-replace rama9 = 1 if rama1 == 1                                       // A
-replace rama9 = 2 if rama1 == 2                                       // B
-replace rama9 = 3 if rama1 == 3                                       // C
-replace rama9 = 4 if inlist(rama1, 4, 5)                              // D, E
-replace rama9 = 5 if rama1 == 6                                       // F
-replace rama9 = 6 if inlist(rama1, 7, 9)                              // G, I
-replace rama9 = 7 if inlist(rama1, 8, 10)                             // H, J
-replace rama9 = 8 if inlist(rama1, 11, 12, 13, 14)                    // K, L, M, N
-replace rama9 = 9 if inrange(rama1, 15, 21)                           // O a U
+    local pobvar "pobreza"
+    local lpvar  "lp"
+    if strpos("`vl'", " pobreza_2013 ") > 0 {
+        local pobvar "pobreza_2013"
+        local lpvar  "lp_2013"
+        display as text "Casen `a': se usa la serie de pobreza con metodología 2013, " ///
+            "que es la comparable."
+    }
 
-gen byte calificado = inlist(oficio1_08, 1, 2, 3)
-replace calificado = . if missing(oficio1_08) | oficio1_08 < 0
+    use region expr sexo edad esc activ o15 o25 o16 rama1 rama4 oficio1_08 ///
+        contrato cotiza yoprcor ytrabajocor `lpvar' `pobvar' `ypcvar' ///
+        using "`archivo'", clear
+    rename `ypcvar' ypc
+    rename `lpvar'  lp
+    rename `pobvar' pobreza
 
-* Rama detallada del año (CIIU rev.4 a 4 dígitos)
-gen long rama_det = rama4 if rama4 > 0
+    gen int anio = `a'
 
-gen byte contrato_d = .
-replace contrato_d = 1 if contrato == 1
-replace contrato_d = 0 if contrato == 0
-gen byte cotiza_d = .
-replace cotiza_d = 1 if cotiza == 1
-replace cotiza_d = 0 if cotiza == 0
+    gen byte ocupacion = activ                            // 1 ocupado 2 desoc 3 inactivo
 
-* Registro en el SII: sólo existe en 2022; sirve para la definición OIT
-gen byte reg_sii = .
-replace reg_sii = 1 if o16 == 1
-replace reg_sii = 0 if o16 == 2
+    gen byte categoria = .
+    replace categoria = 1 if o15 == 1
+    replace categoria = 2 if o15 == 2
+    replace categoria = 3 if o15 == 3
+    replace categoria = 4 if o15 == 4
+    replace categoria = 5 if o15 == 5
+    replace categoria = 6 if inlist(o15, 6, 7)
+    replace categoria = 7 if o15 == 9                     // ojo: acá el 9 es familiar
+    replace categoria = 8 if o15 == 8                     // y el 8 es FF.AA.
 
-rename esc         escolaridad
-rename yoprcor     y_ocup_prin
-rename ytrabajocor y_trabajo
-rename ypc         y_pc_hogar
-rename lp          linea_pobreza
-gen byte pobre = inlist(pobreza, 1, 2) if !missing(pobreza)
+    gen byte tamano = o25 if inrange(o25, 1, 6)
 
-keep anio region expr sexo edad escolaridad ocupacion categoria tamano rama9 ///
-     rama_det calificado contrato_d cotiza_d reg_sii y_ocup_prin y_trabajo ///
-     y_pc_hogar linea_pobreza pobre
+    * Rama: 21 secciones CIIU rev.4 -> 9 divisiones CIIU rev.2
+    gen byte rama9 = .
+    replace rama9 = 1 if rama1 == 1                                   // A
+    replace rama9 = 2 if rama1 == 2                                   // B
+    replace rama9 = 3 if rama1 == 3                                   // C
+    replace rama9 = 4 if inlist(rama1, 4, 5)                          // D, E
+    replace rama9 = 5 if rama1 == 6                                   // F
+    replace rama9 = 6 if inlist(rama1, 7, 9)                          // G, I
+    replace rama9 = 7 if inlist(rama1, 8, 10)                         // H, J
+    replace rama9 = 8 if inlist(rama1, 11, 12, 13, 14)                // K, L, M, N
+    replace rama9 = 9 if inrange(rama1, 15, 21)                       // O a U
+
+    gen byte calificado = inlist(oficio1_08, 1, 2, 3)
+    replace calificado = . if missing(oficio1_08) | oficio1_08 < 0
+
+    * Rama detallada del año (clasificación CAENES de Casen)
+    gen long rama_det = rama4 if rama4 > 0
+
+    gen byte contrato_d = .
+    replace contrato_d = 1 if contrato == 1
+    replace contrato_d = 0 if contrato == 0
+    gen byte cotiza_d = .
+    replace cotiza_d = 1 if cotiza == 1
+    replace cotiza_d = 0 if cotiza == 0
+
+    * Registro en el SII: no existe en 2000; sirve para la definición OIT
+    gen byte reg_sii = .
+    replace reg_sii = 1 if o16 == 1
+    replace reg_sii = 0 if o16 == 2
+
+    rename esc         escolaridad
+    rename yoprcor     y_ocup_prin
+    rename ytrabajocor y_trabajo
+    rename ypc         y_pc_hogar
+    rename lp          linea_pobreza
+    gen byte pobre = inlist(pobreza, 1, 2) if !missing(pobreza)
+
+    keep anio region expr sexo edad escolaridad ocupacion categoria tamano rama9 ///
+         rama_det calificado contrato_d cotiza_d reg_sii y_ocup_prin y_trabajo ///
+         y_pc_hogar linea_pobreza pobre
+
+    if `primero_rec' == 1 {
+        save "`casen_rec'", replace
+        local primero_rec = 0
+    }
+    else {
+        append using "`casen_rec'"
+        save "`casen_rec'", replace
+    }
+}
+
+use "`casen_rec'", clear
 
 * ===========================================================================
 * 3. Unir, etiquetar y validar
@@ -234,13 +284,14 @@ label values estrato estlbl
 * Informalidad comparable entre 2000 y 2022: sin cotización previsional
 gen byte informal_prev = (cotiza_d == 0) if !missing(cotiza_d) & ocupacion == 1
 
-* Informalidad en el sentido OIT: sólo calculable en 2022
+* Informalidad en el sentido OIT: sólo calculable donde hay registro en el SII,
+* es decir en las encuestas recientes, no en 2000
 gen byte informal_oit = .
-replace informal_oit = 0 if anio == 2022 & ocupacion == 1
-replace informal_oit = 1 if anio == 2022 & ocupacion == 1 & cotiza_d == 0
-replace informal_oit = 1 if anio == 2022 & ocupacion == 1 & categoria == 6 & cotiza_d == 0
-replace informal_oit = 1 if anio == 2022 & ocupacion == 1 & categoria == 7
-replace informal_oit = 1 if anio == 2022 & ocupacion == 1 & ///
+replace informal_oit = 0 if anio > 2000 & ocupacion == 1
+replace informal_oit = 1 if anio > 2000 & ocupacion == 1 & cotiza_d == 0
+replace informal_oit = 1 if anio > 2000 & ocupacion == 1 & categoria == 6 & cotiza_d == 0
+replace informal_oit = 1 if anio > 2000 & ocupacion == 1 & categoria == 7
+replace informal_oit = 1 if anio > 2000 & ocupacion == 1 & ///
                             inlist(categoria, 1, 2) & reg_sii == 0
 
 * Ingreso relativo, libre de deflactor
@@ -248,7 +299,7 @@ gen double y_rel_lp = y_ocup_prin / linea_pobreza
 replace y_ocup_prin = . if y_ocup_prin <= 0
 
 compress
-label data "Casen 2000 y 2022 armonizadas — heterogeneidad estructural"
+label data "Casen 2000, 2022 y 2024 armonizadas — heterogeneidad estructural"
 save "$INTER/casen_armonizada.dta", replace
 
 * ===========================================================================
@@ -258,7 +309,7 @@ display as text _n "{hline 70}"
 display as text "VALIDACIÓN — comparar con las cifras publicadas por el MDSF"
 display as text "{hline 70}"
 
-foreach a in 2000 2022 {
+foreach a in $ANIOS {
     quietly count if anio == `a'
     display as text _n "Casen `a' (N = " r(N) " personas de 15 y más)"
     quietly summarize pobre [aw = expr] if anio == `a'
@@ -276,15 +327,22 @@ foreach a in 2000 2022 {
         %12.0fc r(N)
 }
 
-quietly summarize informal_oit [aw = expr] if anio == 2022 & ocupacion == 1
-display as text _n "  Informalidad OIT 2022 (referencia ENE ~27-28%):  " %5.1f 100*r(mean) "%"
+foreach a in $ANIOS {
+    quietly summarize informal_oit [aw = expr] if anio == `a' & ocupacion == 1
+    if r(N) > 0 {
+        display as text "  Informalidad OIT `a' (referencia ENE ~27-28%):    " ///
+            %5.1f 100*r(mean) "%"
+    }
+}
 
 * Sin estrato asignado no hay bloque B; avisar si la pérdida es grande
-quietly count if anio == 2022 & ocupacion == 1
-local n22 = r(N)
-quietly count if anio == 2022 & ocupacion == 1 & missing(estrato)
-if `n22' > 0 & r(N)/`n22' > 0.10 {
-    display as error "Atención: más del 10% de los ocupados de 2022 quedó sin estrato."
+foreach a in $ANIOS {
+    quietly count if anio == `a' & ocupacion == 1
+    local na = r(N)
+    quietly count if anio == `a' & ocupacion == 1 & missing(estrato)
+    if `na' > 0 & r(N)/`na' > 0.10 {
+        display as error "Atención: más del 10% de los ocupados de `a' quedó sin estrato."
+    }
 }
 
 display as text _n "== Base armonizada guardada en $INTER/casen_armonizada.dta =="

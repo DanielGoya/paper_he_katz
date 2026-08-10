@@ -1,5 +1,5 @@
 *! 03_casen_estratos.do
-*! Bloque B — Estratos de productividad al modo PREALC/CEPAL, Casen 2000 vs 2022
+*! Bloque B — Estratos de productividad al modo PREALC/CEPAL, Casen 2000-2022-2024
 *!
 *! La heterogeneidad estructural, tal como la definió el estructuralismo
 *! latinoamericano (Pinto, 1970; PREALC), no es una propiedad de los sectores sino de
@@ -13,7 +13,7 @@
 *! CEPAL en su serie de heterogeneidad estructural, y hay que declararlo.
 *!
 *! Produce:
-*!   T_B1  caracterización de los tres estratos, 2000 y 2022
+*!   T_B1  caracterización de los tres estratos, por año
 *!   T_B2  composición de cada rama por estrato
 *!   T_B3  descomposición de Theil del ingreso laboral: entre y dentro de rama
 *!   F_B1  empleo e ingreso por estrato
@@ -92,7 +92,7 @@ gen double y_lp  = y_ocup_prin / linea_pobreza   // ingreso en múltiplos de la 
 
 * Mediana ponderada del ingreso, por año, para expresar todo en relativos
 gen double y_med_anio = .
-foreach a in 2000 2022 {
+foreach a in $ANIOS {
     quietly summarize y_ocup_prin [aw = expr] if anio == `a', detail
     quietly replace y_med_anio = r(p50) if anio == `a'
 }
@@ -160,7 +160,7 @@ graph bar (asis) pct_empleo pct_ingreso, over(estrato, label(labsize(small))) //
     legend(order(1 "% del empleo" 2 "% de la masa de ingresos laborales") ///
            rows(1) size(small) region(lstyle(none))) ///
     ytitle("Porcentaje") ///
-    note("Fuente: elaboración propia con Casen 2000 (metodología de ingresos actual) y Casen 2022." ///
+    note("Fuente: elaboración propia con Casen 2000 (metodología de ingresos actual), 2022 y 2024." ///
          "Estratos en la tradición PREALC/CEPAL: bajo = hasta 5 ocupados, cuenta propia no calificado," ///
          "servicio doméstico y familiares no remunerados; medio = 6 a 49; alto = 50 y más.", size(vsmall))
 graph export "$OUT/F_B1 empleo e ingreso por estrato.png", replace width(2200)
@@ -171,7 +171,7 @@ graph bar (asis) brecha_alto, over(estrato, label(labsize(small))) over(anio) //
     ytitle("Ingreso mediano de la ocupación principal" "(estrato de alta productividad = 100)") ///
     blabel(bar, format(%4.0f) size(small)) ///
     legend(off) ///
-    note("Fuente: elaboración propia con Casen 2000 y 2022.", size(vsmall))
+    note("Fuente: elaboración propia con Casen 2000, 2022 y 2024.", size(vsmall))
 graph export "$OUT/F_B2 brecha de ingreso por estrato.png", replace width(2200)
 graph export "$OUT/F_B2 brecha de ingreso por estrato.pdf", replace
 
@@ -209,7 +209,7 @@ tempname res
 postfile `res' int anio str28 particion double(theil entre dentro share_entre) ///
     int grupos using "$INTER/theil_dec.dta", replace
 
-foreach a in 2000 2022 {
+foreach a in $ANIOS {
     theildec y_ocup_prin if anio == `a', wvar(expr) gvar(rama9)
     post `res' (`a') ("Rama: 9 divisiones CIIU") (r(theil)) (r(theil_entre)) ///
         (r(theil_dentro)) (100*r(share_entre)) (r(grupos))
@@ -265,7 +265,7 @@ label values part partlbl
 graph bar (asis) share_entre, over(part, label(labsize(small) angle(30))) over(anio) ///
     ytitle("% de la desigualdad de ingresos laborales" "explicada por diferencias ENTRE grupos") ///
     blabel(bar, format(%4.1f) size(small)) legend(off) ///
-    note("Fuente: elaboración propia con Casen 2000 y 2022. Descomposición del índice de Theil-T" ///
+    note("Fuente: elaboración propia con Casen 2000, 2022 y 2024. Descomposición del índice de Theil-T" ///
          "del ingreso de la ocupación principal entre ocupados con ingreso positivo." ///
          "El resto —la mayor parte— es desigualdad DENTRO de cada grupo.", size(vsmall))
 graph export "$OUT/F_B3 desigualdad entre vs dentro de grupos.png", replace width(2200)

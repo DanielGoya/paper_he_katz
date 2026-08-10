@@ -1,12 +1,12 @@
 *! 04_casen_cuatro_chiles.do
-*! Bloque C — Los «cuatro Chiles» de Katz, con números (Casen 2000 vs 2022)
+*! Bloque C — Los «cuatro Chiles» de Katz, con números (Casen 2000, 2022 y 2024)
 *!
 *! Katz describe cuatro «países» que conviven dentro de Chile y no dialogan: el
 *! moderno que se acerca a la frontera, el de recursos naturales, el rezagado y el
 *! excluido. Es una taxonomía de PERSONAS, no de sectores: por eso ninguna matriz
 *! insumo-producto ni ningún análisis de conglomerados sectoriales puede contarla.
 *! Acá se la operacionaliza sobre los microdatos y se mide cuánta gente hay en cada
-*! segmento y cómo cambió entre 2000 y 2022.
+*! segmento y cómo cambió entre 2000 y 2024.
 *!
 *! ES UNA TAXONOMÍA, NO UNA ESTIMACIÓN. Los cortes son decisiones, no parámetros
 *! estimados, y por eso la sensibilidad va publicada junto al resultado principal.
@@ -30,7 +30,7 @@
 *!   · exclusión ABSOLUTA (pobreza por ingresos con la metodología actual) o
 *!     RELATIVA (quintil más bajo de ingreso per cápita del hogar del propio año).
 *!     La distinción no es técnica: la pobreza absoluta chilena se desplomó entre
-*!     2000 y 2022 y la posición relativa no, así que el tamaño del «Chile excluido»
+*!     2000 y 2024 y la posición relativa no, así que el tamaño del «Chile excluido»
 *!     depende por completo de cuál de las dos se mire. Se reportan ambas.
 
 version 15
@@ -56,13 +56,13 @@ replace cadena_rrnn = 1 if anio == 2000 & gru_det == 331                       /
 replace cadena_rrnn = 1 if anio == 2000 & gru_det == 341                       // papel (excluye imprenta)
 replace cadena_rrnn = 1 if anio == 2000 & div_det == 37                        // metales básicos
 
-* --- 2022, CIIU rev.4 ---
-replace cadena_rrnn = 1 if anio == 2022 & inrange(div_det, 1, 3)               // agro, silvicultura, pesca
-replace cadena_rrnn = 1 if anio == 2022 & inrange(div_det, 4, 9)               // minería
-replace cadena_rrnn = 1 if anio == 2022 & inrange(div_det, 10, 12)             // alimentos, bebidas, tabaco
-replace cadena_rrnn = 1 if anio == 2022 & div_det == 16                        // madera
-replace cadena_rrnn = 1 if anio == 2022 & div_det == 17                        // papel
-replace cadena_rrnn = 1 if anio == 2022 & div_det == 24                        // metales básicos
+* --- 2022 y 2024, CIIU rev.4 (clasificación CAENES de Casen) ---
+replace cadena_rrnn = 1 if anio > 2000 & inrange(div_det, 1, 3)               // agro, silvicultura, pesca
+replace cadena_rrnn = 1 if anio > 2000 & inrange(div_det, 4, 9)               // minería
+replace cadena_rrnn = 1 if anio > 2000 & inrange(div_det, 10, 12)             // alimentos, bebidas, tabaco
+replace cadena_rrnn = 1 if anio > 2000 & div_det == 16                        // madera
+replace cadena_rrnn = 1 if anio > 2000 & div_det == 17                        // papel
+replace cadena_rrnn = 1 if anio > 2000 & div_det == 24                        // metales básicos
 
 replace cadena_rrnn = . if missing(rama_det) | rama_det <= 0
 
@@ -83,7 +83,7 @@ replace formal = 0 if ocupacion == 1 & missing(cotiza_d)
 * Exclusión relativa: quintil más bajo del ingreso per cápita del hogar, del propio año.
 * Ojo: `summarize, detail` no devuelve p20, así que el corte se saca con _pctile.
 gen byte q1_pc = .
-foreach a in 2000 2022 {
+foreach a in $ANIOS {
     quietly _pctile y_pc_hogar [aw = expr] if anio == `a' & !missing(y_pc_hogar), p(20)
     local corte20 = r(r1)
     quietly replace q1_pc = (y_pc_hogar <= `corte20') if anio == `a' & !missing(y_pc_hogar)
@@ -268,7 +268,7 @@ use "$INTER/cuatro_chiles_resumen.dta", clear
 graph bar (asis) pct_pob15, over(chile, label(labsize(vsmall) angle(25))) over(anio) ///
     ytitle("% de la población de 15 años y más") ///
     blabel(bar, format(%4.1f) size(vsmall)) legend(off) ///
-    note("Fuente: elaboración propia con Casen 2000 y 2022. Clasificación construida sobre" ///
+    note("Fuente: elaboración propia con Casen 2000, 2022 y 2024. Clasificación construida sobre" ///
          "los cuatro «países» que describe Katz; ver el árbol de decisión en el do-file y la" ///
          "tabla de sensibilidad T_C2.", size(vsmall))
 graph export "$OUT/F_C1 poblacion en cada uno de los cuatro Chiles.png", replace width(2200)
@@ -280,7 +280,7 @@ graph bar (asis) pct_ocupados pct_masa, over(chile, label(labsize(vsmall) angle(
     legend(order(1 "% de los ocupados" 2 "% de la masa de ingresos laborales") ///
            rows(1) size(small) region(lstyle(none))) ///
     ytitle("Porcentaje") ///
-    note("Fuente: elaboración propia con Casen 2000 y 2022.", size(vsmall))
+    note("Fuente: elaboración propia con Casen 2000, 2022 y 2024.", size(vsmall))
 graph export "$OUT/F_C2 empleo e ingresos por segmento.png", replace width(2200)
 graph export "$OUT/F_C2 empleo e ingresos por segmento.pdf", replace
 
