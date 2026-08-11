@@ -56,6 +56,10 @@ do "$SRC/08_productividad_sii.do"
 * Bloque G · El «Chile moderno» definido por productividad, en tres capas
 do "$SRC/09_moderno_productividad.do"
 
+* Bloque H · La capa de productividad con VALOR AGREGADO (ENIA 1995-2015), que corrige
+*            el sesgo de medir con ventas del bloque F, y la partición de la nómina
+do "$SRC/10_productividad_enia.do"
+
 display as text _n "{hline 78}"
 display as text "Pipeline terminado. Salidas en: $OUT"
 display as text "{hline 78}"
