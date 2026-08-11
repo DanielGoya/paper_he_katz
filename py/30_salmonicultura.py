@@ -71,6 +71,36 @@ D_FAO = rutas.ALMACEN / "FAO FishStat" / "Aquaculture_2025.1.0.zip"
 D_BACI = rutas.ALMACEN / "Dat_bacii" / "BACI_HS22_V202601"
 D_IPC = rutas.CONFIG / "ipc_chile_wdi.csv"
 
+# Las gráficas del libro, extraídas del .docx y guardadas con su LEEME. Van al lado de las
+# actualizadas: sin el original a la vista no se ve hasta dónde llegaba la evidencia.
+D_ORIG = rutas.INTER / "figuras_originales_katz"
+ORIGINALES = {
+    "catchup": ("original catch-up Chile-Noruega 1990-2002.png", 2002),
+    "enfermedades": ("original enfermedades y produccion 1985-2007.png", 2007),
+    "region": ("original produccion por region 2006-2012.png", 2012),
+    "ovas": ("original ovas importadas y locales 1984-2008.png", 2008),
+    "permisos": ("original nuevos permisos por region 1982-2011.png", 2011),
+}
+
+
+def poner_original(eje, clave: str, titulo: str) -> None:
+    """Dibuja el recorte de la gráfica del libro en un eje, sin ejes ni marco."""
+    ruta = D_ORIG / ORIGINALES[clave][0]
+    eje.set_axis_off()
+    if not rutas.hay(ruta):
+        eje.text(0.5, 0.5, f"falta {ruta.name}", ha="center", va="center", fontsize=8)
+        return
+    eje.imshow(plt.imread(ruta))
+    eje.set_title(titulo, fontsize=10, loc="left")
+
+
+def marcar_corte(eje, anio: int, texto: str, y: float = 0.94) -> None:
+    """Raya vertical y etiqueta en el año hasta donde llegaba la gráfica del libro."""
+    eje.axvline(anio, color="#7f8c8d", ls="--", lw=1.1)
+    eje.annotate(texto, xy=(anio, y), xycoords=("data", "axes fraction"),
+                 xytext=(6, 0), textcoords="offset points", fontsize=8, color="#555555",
+                 va="top")
+
 # Los seis países de la gráfica original de Katz (`El "Catch-up" de la industria salmonera
 # Chilena, 1990-2002`), con sus nombres tal como los escribe FAO.
 PAISES = {
@@ -161,6 +191,20 @@ HOLDINGS_2024 = [
 # Fiskeridirektoratet, Key figures 2024, tabla 20: venta de las diez mayores empresas.
 CR10_NORUEGA = {2020: 65.8, 2021: 66.8, 2022: 69.3, 2023: 68.7, 2024: 69.0}
 
+# Sernapesca, informe de antimicrobianos 2024, tabla 3: ciclos cerrados por región.
+# Es el equivalente actual de la gráfica «Expansión de la frontera de explotación acuícola
+# hacia Aysén» del libro, que llega a 2012.
+COSECHA_REGION_2024 = {"Los Lagos": 547_628.45, "Aysén": 395_369.06,
+                       "Magallanes": 108_015.97}
+CENTROS_REGION_2024 = {"Los Lagos": 148, "Aysén": 130, "Magallanes": 23}   # ciclos cerrados
+# Lectura de la gráfica del libro para el primer y el último año que muestra, en toneladas.
+# Son valores leídos del gráfico, no cifras publicadas: sirven para la proporción, no para
+# citar niveles.
+COSECHA_REGION_LIBRO = {
+    2006: {"Los Lagos": 500_000, "Aysén": 135_000, "Magallanes": 5_000},
+    2012: {"Los Lagos": 343_000, "Aysén": 424_000, "Magallanes": 35_000},
+}
+
 # Sernapesca, informes de situación sanitaria: centros marinos activos por mes.
 CENTROS_CL = {
     2024: [313, 302, 313, 326, 337, 347, 350, 357, 340, 331, 332, 342],
@@ -199,16 +243,43 @@ PRESUP_SERNAPESCA = {
 # DIPRES, Ley de Presupuestos, partida 07 (Economía), capítulo 04 (Sernapesca),
 # programa 01, línea GASTOS, en millones de pesos de cada año. Bajado de las planillas
 # oficiales, archivadas en `datos/raw_local/salmonicultura/DIPRES Sernapesca`.
-#
-# OJO CON EL EMPALME: en 2016, el único año que se traslapa, la serie de Katz marca
-# 40.000 millones y la Ley de Presupuestos 32.566. No es un error de ninguna de las dos:
-# la del libro no dice de dónde sale y es compatible con presupuesto vigente o ejecutado,
-# que corre por encima de la ley inicial. Por eso NO se empalman: se grafican como dos
-# series y se compara la tendencia, no el nivel.
 PRESUP_DIPRES = {
+    2012: 20_240.102, 2013: 22_517.796, 2014: 25_504.000, 2015: 29_134.900,
     2016: 32_565.760, 2017: 36_768.878, 2018: 38_290.370, 2019: 33_257.358,
     2020: 34_116.850, 2021: 33_193.882, 2022: 34_928.173, 2023: 38_640.157,
     2024: 42_324.969, 2025: 45_773.777, 2026: 46_517.850,
+}
+
+# QUÉ MIDE LA SERIE DEL LIBRO, RESUELTO.
+# En 2016 el gráfico de Katz marca 40.000 millones y la Ley de Presupuestos 32.566: un 23%
+# de diferencia que había que explicar antes de extender nada. La respuesta está en las
+# «planillas de decretos por programa» de DIPRES, que registran las modificaciones
+# presupuestarias totalmente tramitadas de cada año. Sumadas a la ley inicial dan el
+# PRESUPUESTO VIGENTE, y éste reproduce la serie del libro:
+#
+#   año    ley inicial   + decretos = vigente     serie de Katz    razón
+#   2013      22.517,8      3.345,1   25.862,8       25.862,8      1,0000
+#   2014      25.504,0      3.640,3   29.144,3       29.144,3      1,0000
+#   2015      29.134,9      5.791,7   34.926,6       34.926,6      1,0000
+#   2016      32.565,8      7.432,8   39.998,6       40.000,0      1,0000
+#   2012      20.240,1      2.006,6   22.246,7       22.464,5      1,0098
+#
+# O sea la serie del libro es el presupuesto VIGENTE, no la ley inicial. Eso permite
+# extenderla sin empalmes artificiales: desde 2017 el vigente se lee directamente del
+# informe de ejecución del cuarto trimestre, que trae las tres columnas.
+PRESUP_VIGENTE = {
+    2017: 39_570.4, 2018: 41_492.9, 2019: 33_952.6, 2020: 33_703.1, 2021: 36_585.9,
+    2022: 41_473.2, 2023: 45_439.7, 2024: 50_080.5, 2025: 54_111.7,
+}
+PRESUP_DEVENGADO = {
+    2017: 36_438.4, 2018: 40_156.7, 2019: 33_282.3, 2020: 33_233.7, 2021: 35_796.0,
+    2022: 39_984.5, 2023: 42_996.8, 2024: 46_141.8, 2025: 48_931.1,
+}
+# Vigente reconstruido sumando decretos, para los años que se traslapan con el libro.
+# Es la verificación de arriba, y se reporta en la tabla para que quede auditable.
+VIGENTE_DECRETOS = {
+    2012: 22_246.7, 2013: 25_862.8, 2014: 29_144.3, 2015: 34_926.6, 2016: 39_998.6,
+    2017: 39_569.6, 2018: 41_169.5, 2019: 33_950.9, 2020: 33_702.2,
 }
 # Glosa «Dotación máxima de personal» de la misma Ley de Presupuestos.
 DOTACION_MAXIMA = {
@@ -257,40 +328,46 @@ def produccion() -> pd.DataFrame:
 
 
 def figura_catchup(d: pd.DataFrame) -> None:
-    fig, ejes = plt.subplots(1, 2, figsize=(12.4, 4.9))
+    corte = ORIGINALES["catchup"][1]
+    fig, ejes = plt.subplots(1, 3, figsize=(16.6, 4.5),
+                             gridspec_kw={"width_ratios": [1.05, 1.2, 1.0]})
+    poner_original(ejes[0], "catchup",
+                   f"a. La gráfica del libro: «El catch-up de la industria salmonera\n"
+                   f"    chilena», 1990-{corte}")
+
     colores = {"Noruega": "#1f4e79", "Chile": "#c0392b", "Reino Unido": "#e0a800",
                "Canadá": "#7f8c8d", "Islas Feroe": "#6c3483", "Australia": "#117a65"}
+    e = ejes[1]
     for p, c in colores.items():
-        ejes[0].plot(d.index, d[p], color=c, lw=2.0 if p in ("Chile", "Noruega") else 1.2,
-                     label=p)
-    ejes[0].axvspan(1990, 2002, color="#000000", alpha=0.05)
-    ejes[0].annotate("hasta acá llega\nla gráfica de Katz", xy=(2002, 1500),
-                     xytext=(2004.5, 1520), fontsize=8, color="#555555",
-                     arrowprops=dict(arrowstyle="->", color="#999999", lw=0.8))
-    ejes[0].set_ylabel("miles de toneladas")
-    ejes[0].set_title("a. Producción de salmónidos de cultivo", fontsize=10, loc="left")
-    ejes[0].legend(fontsize=8, ncol=2, frameon=False)
+        e.plot(d.index, d[p], color=c, lw=2.0 if p in ("Chile", "Noruega") else 1.2, label=p)
+    e.axvspan(1990, corte, color="#000000", alpha=0.05)
+    marcar_corte(e, corte, "hasta acá\nllega el original", y=0.62)
+    e.set_ylabel("miles de toneladas")
+    e.set_title("b. La misma serie, hasta el último dato disponible", fontsize=10, loc="left")
+    e.legend(fontsize=8, ncol=2, frameon=False, loc="upper left")
 
-    ejes[1].plot(d.index, d["Chile / Noruega"], color="#c0392b", lw=2.2)
-    ejes[1].axhline(1.0, color="#333333", lw=0.9, ls="--")
+    e = ejes[2]
+    e.plot(d.index, d["Chile / Noruega"], color="#c0392b", lw=2.2)
+    e.axhline(1.0, color="#333333", lw=0.9, ls="--")
+    e.axvspan(1990, corte, color="#000000", alpha=0.05)
+    marcar_corte(e, corte, "", y=0.5)
     pico = d["Chile / Noruega"].idxmax()
-    ejes[1].annotate(f"{pico}: {d.loc[pico, 'Chile / Noruega']:.2f}",
-                     xy=(pico, d.loc[pico, "Chile / Noruega"]),
-                     xytext=(pico - 10.5, d.loc[pico, "Chile / Noruega"] - 0.11), fontsize=8,
-                     arrowprops=dict(arrowstyle="->", color="#999999", lw=0.8))
-    ult = d.index.max()
-    ejes[1].annotate(f"{ult}: {d.loc[ult, 'Chile / Noruega']:.2f}",
-                     xy=(ult, d.loc[ult, "Chile / Noruega"]),
-                     xytext=(ult - 11, d.loc[ult, "Chile / Noruega"] - 0.14), fontsize=8,
-                     arrowprops=dict(arrowstyle="->", color="#999999", lw=0.8))
-    ejes[1].set_ylim(0.15, 1.12)
-    ejes[1].set_ylabel("razón")
-    ejes[1].set_title("b. Producción de Chile respecto de la de Noruega", fontsize=10,
-                      loc="left")
-    for e in ejes:
+    e.annotate(f"{pico}: {d.loc[pico, 'Chile / Noruega']:.2f}",
+               xy=(pico, d.loc[pico, "Chile / Noruega"]),
+               xytext=(pico - 10.5, d.loc[pico, "Chile / Noruega"] - 0.11), fontsize=8,
+               arrowprops=dict(arrowstyle="->", color="#999999", lw=0.8))
+    ult = int(d.index.max())
+    e.annotate(f"{ult}: {d.loc[ult, 'Chile / Noruega']:.2f}",
+               xy=(ult, d.loc[ult, "Chile / Noruega"]),
+               xytext=(ult - 11, d.loc[ult, "Chile / Noruega"] - 0.14), fontsize=8,
+               arrowprops=dict(arrowstyle="->", color="#999999", lw=0.8))
+    e.set_ylim(0.15, 1.12)
+    e.set_ylabel("razón")
+    e.set_title("c. Producción de Chile respecto de la de Noruega", fontsize=10, loc="left")
+    for e in ejes[1:]:
         e.set_xlim(1990, ult)
-    fig.suptitle("El catch-up con Noruega se detuvo en 2006", fontsize=12, x=0.09,
-                 ha="left", y=0.99)
+    fig.suptitle("El catch-up con Noruega se detuvo en 2006, y la gráfica del libro "
+                 "termina justo antes", fontsize=12.5, x=0.06, ha="left", y=1.02)
     fig.tight_layout()
     for ext in ("png", "pdf"):
         fig.savefig(rutas.figura("F_J1 catch-up de la salmonicultura", ext),
@@ -315,7 +392,13 @@ def antimicrobianos(prod: pd.DataFrame) -> pd.DataFrame:
 
 
 def figura_antimicrobianos(d: pd.DataFrame) -> None:
-    fig, ejes = plt.subplots(1, 2, figsize=(12.4, 4.6))
+    corte = ORIGINALES["enfermedades"][1]
+    fig, ejes = plt.subplots(1, 3, figsize=(16.6, 4.5),
+                             gridspec_kw={"width_ratios": [1.0, 1.15, 1.0]})
+    poner_original(ejes[0], "enfermedades",
+                   f"a. La gráfica sanitaria del libro: «Catching up y sobreexplotación\n"
+                   f"    del recurso», 1985-{corte}")
+    ejes = [ejes[1], ejes[2]]
     e = ejes[0]
     e.bar(d.index, d["principio_activo_t"], color="#b0c4de", label="toneladas de principio activo")
     e.set_ylabel("toneladas")
@@ -325,7 +408,9 @@ def figura_antimicrobianos(d: pd.DataFrame) -> None:
     e2.set_ylabel("gramos por tonelada cosechada")
     e2.grid(False)
     e.set_xticks(range(2007, 2025, 3))
-    e.set_title("a. Chile: cantidad e intensidad, 2007-2024", fontsize=10, loc="left")
+    marcar_corte(e, corte, "el original\ntermina acá", y=0.62)
+    e.set_title("b. Chile: cantidad e intensidad del uso de antimicrobianos, 2007-2024",
+                fontsize=10, loc="left")
     lineas = e.get_legend_handles_labels()[0] + e2.get_legend_handles_labels()[0]
     etiq = e.get_legend_handles_labels()[1] + e2.get_legend_handles_labels()[1]
     e.legend(lineas, etiq, fontsize=8, frameon=False, loc="upper left")
@@ -348,11 +433,11 @@ def figura_antimicrobianos(d: pd.DataFrame) -> None:
     e.annotate("", xy=(ult - 0.9, v.loc[ult, "indice_g_por_t"]),
                xytext=(ult - 0.9, v.loc[ult, "noruega_g_por_t"]),
                arrowprops=dict(arrowstyle="<->", color="#555555", lw=1.0))
-    e.set_title("b. Chile y Noruega, 2015-2024", fontsize=10, loc="left")
+    e.set_title("c. Chile y Noruega, 2015-2024", fontsize=10, loc="left")
     e.legend(fontsize=9, frameon=True, framealpha=0.95, edgecolor="none",
              loc="center left")
-    fig.suptitle("Uso de antimicrobianos en la salmonicultura", fontsize=12, x=0.09,
-                 ha="left", y=0.99)
+    fig.suptitle("Uso de antimicrobianos: el «talón de Aquiles» del libro, medido "
+                 "diecisiete años después", fontsize=12.5, x=0.06, ha="left", y=1.02)
     fig.tight_layout()
     for ext in ("png", "pdf"):
         fig.savefig(rutas.figura("F_J2 antimicrobianos en la salmonicultura", ext),
@@ -446,6 +531,9 @@ def figura_precios(partidas: pd.DataFrame) -> None:
     e.set_title("El salmón chileno se vende por debajo del noruego en el pez fresco "
                 "y en el filete,\nque son tres cuartos de lo que Chile exporta",
                 fontsize=11, loc="left")
+    e.text(0, 1.005, "El libro lo afirma sin fecha ni cifra —«sus precios cotizan por "
+           "debajo de los de Noruega»—: acá está medido, partida por partida",
+           transform=e.transAxes, fontsize=8.5, color="#555555", va="bottom")
     e.legend(fontsize=9, frameon=True, framealpha=0.95, edgecolor="none",
              loc="lower right", bbox_to_anchor=(0.99, 0.02))
     fig.tight_layout()
@@ -546,7 +634,11 @@ def figura_concentracion(h: pd.DataFrame) -> None:
     e.set_title("b. Dos órdenes de magnitud entre empresas de la misma rama",
                 fontsize=10, loc="left")
     fig.suptitle("Concentración y heterogeneidad dentro de la salmonicultura chilena",
-                 fontsize=12, x=0.09, ha="left", y=0.995)
+                 fontsize=12.5, x=0.06, ha="left", y=1.03)
+    fig.text(0.06, 0.985, "El libro cuenta 219 empresas en 1997 y «las 5 más grandes con "
+             "más del 50% de las concesiones»; no tiene gráfica de esto, y su última cifra "
+             "de concentración es de alrededor de 2009",
+             fontsize=8.5, color="#555555", ha="left", va="top")
     fig.tight_layout()
     for ext in ("png", "pdf"):
         fig.savefig(rutas.figura("F_J4 concentracion y heterogeneidad intra-rama", ext),
@@ -563,53 +655,173 @@ def sernapesca(prod: pd.DataFrame) -> pd.DataFrame:
     anios = sorted(set(PRESUP_SERNAPESCA) | set(PRESUP_DIPRES) | set(DOTACION_SERNAPESCA))
     d = pd.DataFrame(index=pd.Index(anios, name="anio"))
     d["katz_nominal_MM"] = pd.Series(PRESUP_SERNAPESCA)
-    d["dipres_nominal_MM"] = pd.Series(PRESUP_DIPRES)
+    d["ley_inicial_MM"] = pd.Series(PRESUP_DIPRES)
+    d["vigente_decretos_MM"] = pd.Series(VIGENTE_DECRETOS)
+    d["vigente_4T_MM"] = pd.Series(PRESUP_VIGENTE)
+    d["devengado_MM"] = pd.Series(PRESUP_DEVENGADO)
+    # La serie continua en el concepto del libro: sus propias cifras hasta 2016 y el
+    # vigente oficial del cuarto trimestre desde 2017. No hay empalme que justificar
+    # porque es la misma magnitud; la verificación está en VIGENTE_DECRETOS.
+    d["vigente_MM"] = d["katz_nominal_MM"].where(d.index <= 2016, d["vigente_4T_MM"])
     d["ipc_2010_100"] = ipc["ipc_2010_100"]
-    for col in ("katz", "dipres"):
-        d[f"{col}_real_MM_2025"] = d[f"{col}_nominal_MM"] * base / d["ipc_2010_100"]
+    for col in ("katz", "ley_inicial", "vigente"):
+        base_col = f"{col}_nominal_MM" if col == "katz" else f"{col}_MM"
+        d[f"{col}_real_MM_2025"] = d[base_col] * base / d["ipc_2010_100"]
+    d["razon_katz_sobre_ley"] = d["katz_nominal_MM"] / d["ley_inicial_MM"]
     d["dotacion_efectiva"] = pd.Series(DOTACION_SERNAPESCA)
     d["dotacion_maxima_ley"] = pd.Series(DOTACION_MAXIMA)
     cosecha = {a: c for a, _, c in ANTIMICROBIANOS_CL}
     d["cosecha_salmonidos_t"] = pd.Series(cosecha)
     d["presupuesto_real_por_t_cosechada"] = (
-        1_000_000 * d["dipres_real_MM_2025"] / d["cosecha_salmonidos_t"])
+        1_000_000 * d["vigente_real_MM_2025"] / d["cosecha_salmonidos_t"])
     return d
 
 
 def figura_sernapesca(d: pd.DataFrame) -> None:
-    fig, ejes = plt.subplots(1, 2, figsize=(12.4, 4.6))
-    e = ejes[0]
-    katz = d["katz_real_MM_2025"].dropna()
-    dip = d["dipres_real_MM_2025"].dropna()
-    e.plot(katz.index, katz, color="#1f4e79", lw=2.2,
-           label="serie del libro de Katz, hasta 2016")
-    e.plot(dip.index, dip, color="#c0392b", lw=2.2, marker="o", ms=3.5,
-           label="Ley de Presupuestos (DIPRES), 2016-2026")
-    ult = int(dip.index.max())      # el IPC llega hasta 2025: 2026 queda sin deflactar
-    caida = 100 * (dip.loc[ult] / dip.loc[2016] - 1)
-    e.text(1982, 52_000, f"{caida:+.1f}% real entre 2016 y {ult},\n"
-           f"con la cosecha 42% más alta", fontsize=9, color="#c0392b", va="top")
-    e.set_ylabel("millones de pesos de 2025")
-    e.set_title("a. Presupuesto de Sernapesca", fontsize=10, loc="left")
-    e.legend(fontsize=8, frameon=False, loc="upper left")
+    """Dos filas: arriba el presupuesto, abajo la dotación; a la izquierda el original.
 
-    e = ejes[1]
+    Las dos gráficas del libro son gráficos nativos de Word, o sea no hay recorte que
+    pegar: la columna «original» las reproduce con las series que se leyeron del XML del
+    propio archivo, en pesos corrientes y con el mismo alcance temporal que tienen allá.
+    """
+    corte_p, corte_d = 2016, 2016
+    fig, ejes = plt.subplots(2, 2, figsize=(13.6, 8.4),
+                             gridspec_kw={"width_ratios": [1.0, 1.35]})
+
+    # --- fila 1: presupuesto ---
+    e = ejes[0, 0]
+    k = d["katz_nominal_MM"].dropna()
+    e.plot(k.index, k, color="#1f4e79", lw=2.0)
+    e.set_ylabel("millones de pesos corrientes")
+    e.set_title(f"a. La gráfica del libro: «Evolución presupuesto Sernapesca\n"
+                f"    (millones de pesos corrientes)», 1981-{corte_p}", fontsize=10,
+                loc="left")
+
+    e = ejes[0, 1]
+    v = d["vigente_real_MM_2025"].dropna()
+    e.plot(v.index, v, color="#1f4e79", lw=2.2, label="presupuesto vigente")
+    post = v[v.index >= corte_p]
+    e.plot(post.index, post, color="#c0392b", lw=2.4, marker="o", ms=3.5,
+           label="lo que agrega esta actualización")
+    ley = d["ley_inicial_real_MM_2025"].dropna()
+    e.plot(ley.index, ley, color="#7f8c8d", lw=1.3, ls=":", label="ley inicial")
+    e.axvspan(1981, corte_p, color="#000000", alpha=0.05)
+    marcar_corte(e, corte_p, "hasta acá\nllega el original", y=0.45)
+    ult = int(v.index.max())
+    caida = 100 * (v.loc[ult] / v.loc[corte_p] - 1)
+    e.text(1982, 57_500, f"En el mismo concepto que usa el libro, el presupuesto real\n"
+                         f"cayó {abs(caida):.1f}% entre {corte_p} y {ult}, con la cosecha "
+                         f"42% más alta", fontsize=9, color="#c0392b", va="top")
+    e.set_ylabel("millones de pesos de 2025")
+    e.set_title("b. La misma serie, extendida y en moneda constante", fontsize=10,
+                loc="left")
+    e.legend(fontsize=8, frameon=False, loc="upper left", bbox_to_anchor=(0.0, 0.80))
+
+    # --- fila 2: dotación ---
+    e = ejes[1, 0]
     v = d["dotacion_efectiva"].dropna()
+    e.plot(v.index, v, color="#1f4e79", lw=2.0, marker="o", ms=3.5)
+    e.set_ylabel("personas")
+    e.set_title(f"c. La gráfica del libro: «Dotación efectiva Sernapesca»,\n"
+                f"    2002-{corte_d}", fontsize=10, loc="left")
+
+    e = ejes[1, 1]
     e.plot(v.index, v, color="#1f4e79", lw=2.2, marker="o", ms=3.5,
-           label="dotación efectiva (libro de Katz)")
+           label="dotación efectiva (serie del libro)")
     m = d["dotacion_maxima_ley"].dropna()
     e.plot(m.index, m, color="#c0392b", lw=2.2, marker="s", ms=3.5,
            label="dotación máxima de la Ley de Presupuestos")
-    e.axvline(2008, color="#7f8c8d", ls="--", lw=1.0)
-    e.text(2008.3, 330, "crisis del ISA", fontsize=8, color="#555555")
+    e.axvspan(2002, corte_d, color="#000000", alpha=0.05)
+    marcar_corte(e, corte_d, "hasta acá\nllega el original", y=0.40)
+    e.axvline(2008, color="#b0b0b0", ls=":", lw=1.0)
+    e.text(2008.3, 330, "crisis del ISA", fontsize=8, color="#888888")
     e.set_ylabel("personas")
-    e.set_title("b. Dotación de Sernapesca", fontsize=10, loc="left")
+    e.set_title("d. La misma serie, con la dotación autorizada por la ley", fontsize=10,
+                loc="left")
     e.legend(fontsize=8, frameon=False, loc="upper left")
-    fig.suptitle("La capacidad del regulador dejó de crecer después de 2016",
-                 fontsize=12, x=0.09, ha="left", y=0.99)
+
+    fig.suptitle("La capacidad del regulador: las dos gráficas del libro, y lo que pasó "
+                 "después de 2016", fontsize=12.5, x=0.06, ha="left", y=1.0)
     fig.tight_layout()
     for ext in ("png", "pdf"):
         fig.savefig(rutas.figura("F_J5 presupuesto y dotacion de Sernapesca", ext),
+                    bbox_inches="tight")
+    plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# 6. La frontera de explotación: el reparto regional
+# ---------------------------------------------------------------------------
+def figura_regiones() -> pd.DataFrame:
+    corte = ORIGINALES["region"][1]
+    filas = []
+    for anio, reg in COSECHA_REGION_LIBRO.items():
+        tot = sum(reg.values())
+        for r, v in reg.items():
+            filas.append({"anio": anio, "region": r, "toneladas": v,
+                          "pct": 100 * v / tot, "fuente": "leído de la gráfica del libro"})
+    tot = sum(COSECHA_REGION_2024.values())
+    for r, v in COSECHA_REGION_2024.items():
+        filas.append({"anio": 2024, "region": r, "toneladas": v, "pct": 100 * v / tot,
+                      "fuente": "Sernapesca, ciclos cerrados 2024"})
+    d = pd.DataFrame(filas)
+
+    fig, ejes = plt.subplots(1, 2, figsize=(13.4, 4.6),
+                             gridspec_kw={"width_ratios": [1.15, 1.0]})
+    poner_original(ejes[0], "region",
+                   f"a. La gráfica del libro: «Expansión de la frontera de explotación\n"
+                   f"    acuícola hacia Aysén», 2006-{corte}")
+    e = ejes[1]
+    regiones = ["Los Lagos", "Aysén", "Magallanes"]
+    colores = {"Los Lagos": "#4a6fa5", "Aysén": "#c0392b", "Magallanes": "#117a65"}
+    anios = [2006, corte, 2024]
+    x = np.arange(len(anios))
+    abajo = np.zeros(len(anios))
+    for r in regiones:
+        alt = [d[(d.anio == a) & (d.region == r)]["pct"].iloc[0] for a in anios]
+        e.bar(x, alt, bottom=abajo, color=colores[r], width=0.55, label=r)
+        for i, (v, b) in enumerate(zip(alt, abajo)):
+            if v > 3:
+                e.text(x[i], b + v / 2, f"{v:.0f}%", ha="center", va="center",
+                       fontsize=9, color="white")
+        abajo = abajo + np.array(alt)
+    e.set_xticks(x)
+    e.set_xticklabels([f"{a}\n{'(gráfica del libro)' if a <= corte else '(Sernapesca)'}"
+                       for a in anios], fontsize=9)
+    e.set_ylabel("% de la producción de salmónidos")
+    e.set_ylim(0, 108)
+    e.set_title("b. El mismo reparto, con el dato más reciente", fontsize=10, loc="left")
+    e.legend(fontsize=9, frameon=False, ncol=3, loc="upper center")
+    e.grid(axis="x", visible=False)
+    fig.suptitle("La frontera siguió moviéndose al sur: Magallanes pasó de casi nada a "
+                 "un décimo de la cosecha", fontsize=12.5, x=0.06, ha="left", y=1.01)
+    fig.tight_layout()
+    for ext in ("png", "pdf"):
+        fig.savefig(rutas.figura("F_J6 frontera de explotacion por region", ext),
+                    bbox_inches="tight")
+    plt.close(fig)
+    return d
+
+
+def figura_pendientes() -> None:
+    """Las dos gráficas del libro que este bloque todavía no puede actualizar.
+
+    Van al output igual: tenerlas a mano en la carpeta de figuras es lo que hace visible
+    qué queda por hacer, y con qué fuente habría que hacerlo.
+    """
+    fig, ejes = plt.subplots(1, 2, figsize=(14.0, 4.6))
+    poner_original(ejes[0], "ovas",
+                   "a. «Importación y producción local de ovas de salmón», 1984-2008\n"
+                   "    Pendiente: Aduanas por partida arancelaria, cruzado con Sernapesca")
+    poner_original(ejes[1], "permisos",
+                   "b. «Nuevos permisos de cultivo por regiones del sur de Chile», "
+                   "1982-2011\n    Pendiente: registro de concesiones de acuicultura de "
+                   "Subpesca")
+    fig.suptitle("Las dos gráficas del libro que quedan por actualizar", fontsize=12.5,
+                 x=0.06, ha="left", y=1.02)
+    fig.tight_layout()
+    for ext in ("png", "pdf"):
+        fig.savefig(rutas.figura("F_J7 graficas del libro pendientes de actualizar", ext),
                     bbox_inches="tight")
     plt.close(fig)
 
@@ -659,13 +871,26 @@ def main() -> None:
     sp = sernapesca(prod)
     sp.to_excel(rutas.tabla("T_J8 presupuesto y dotacion de Sernapesca"))
     figura_sernapesca(sp)
-    real = sp["dipres_real_MM_2025"].dropna()
+    razon = sp["razon_katz_sobre_ley"].dropna()
+    err = (sp["vigente_decretos_MM"] / sp["katz_nominal_MM"] - 1).dropna().abs()
+    print(f"T_J8  la serie del libro está {100 * razon.mean() - 100:.1f}% sobre la ley "
+          f"inicial en promedio ({100 * razon.min() - 100:.1f} a "
+          f"{100 * razon.max() - 100:.1f}%); reconstruida como vigente, el error máximo "
+          f"contra el libro es {100 * err.max():.2f}%")
+    real = sp["vigente_real_MM_2025"].dropna()
     por_t = sp["presupuesto_real_por_t_cosechada"]
     ult = int(real.index.max())
-    print(f"T_J8  presupuesto real 2016 {real[2016]:,.0f} MM contra {ult} {real[ult]:,.0f} MM "
-          f"de 2025: {100 * (real[ult] / real[2016] - 1):+.1f}%; "
+    print(f"      presupuesto vigente real 2016 {real[2016]:,.0f} MM contra {ult} "
+          f"{real[ult]:,.0f} MM de 2025: {100 * (real[ult] / real[2016] - 1):+.1f}%; "
           f"por tonelada cosechada, de {por_t[2016]:,.0f} a {por_t[2024]:,.0f} pesos "
           f"({100 * (por_t[2024] / por_t[2016] - 1):+.1f}%)")
+
+    reg = figura_regiones()
+    reg.to_excel(rutas.tabla("T_J9 cosecha de salmonidos por region"), index=False)
+    m = reg[(reg.anio == 2024) & (reg.region == "Magallanes")]["pct"].iloc[0]
+    print(f"T_J9  Magallanes pasa de 1,0% de la cosecha en 2006 a {m:.1f}% en 2024")
+
+    figura_pendientes()
 
 
 if __name__ == "__main__":
