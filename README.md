@@ -54,10 +54,40 @@ fallar más adelante.
 | `src/07_contraste_narrativa.do` | D | Contraste de afirmaciones puntuales del ensayo de Katz con los datos |
 | `src/08_productividad_sii.do` | F | Productividad y salarios por rama × tamaño de empresa, y el puente de tramo de venta a banda de empleo (SII 2005-2024) |
 | `src/09_moderno_productividad.do` | G | El «Chile moderno» definido por productividad, en tres capas |
+| `src/10_productividad_enia.do` | H | Productividad con valor agregado real de planta y no con ventas, y quién se queda con la nómina (ENIA 1995-2015) |
 
 Cada do-file lleva en el encabezado la fuente, las decisiones de construcción y las advertencias
 de medición. Los que lo ameritan traen chequeos internos que abortan la corrida si una identidad
 no cierra —la descomposición McMillan-Rodrik, la de Theil, la partición de los cuatro Chiles—.
+
+## El bloque I: la capa de conglomerados
+
+Corre **en Python, aparte del pipeline de Stata**, porque replica el `hclust` de R que usó el
+equipo de la UAM y `scipy.cluster.hierarchy` lo reproduce exactamente. Responde al pedido de
+Gabriela Dutrénit de incorporar variables de sustentabilidad, digitalización y tamaño de empresa.
+
+```bash
+powershell -File "D:/repos/paper_he_katz/scripts/crear-entorno.ps1"
+```
+
+y después, en orden, desde `py/`:
+
+```bash
+D:/repos/paper_he_katz/.venv/Scripts/python.exe 20_replica_hclust.py
+```
+
+| Archivo | Qué produce |
+|---|---|
+| `py/rutas.py` | Gemelo de `config/rutas.do`: único archivo de `py/` con rutas absolutas |
+| `py/20_replica_hclust.py` | Réplica del agrupamiento de la UAM. Verifica que reproduce su partición y aborta si no: es el test de regresión del bloque |
+| `py/21_concordancias.py` | Verifica que el `codigo_3dig` de la UAM es el código de actividad del Banco Central; clasifica los productos energéticos y TIC; resuelve CIIU4.CL → COU |
+| `py/22_variables_nuevas.py` | Intensidad energética, digitalización, encadenamientos de Rasmussen y tamaño medio de empresa, por actividad |
+| `py/23_cluster_ampliado.py` | Capa A (caracterización) y capa B (reagrupamiento), con placebo de dilución. Tablas `T_I1`-`T_I6`, figuras `F_I1`-`F_I2` |
+| `py/24_carbono_retc.py` | Validación física contra emisiones declaradas de CO₂. Tablas `T_I7`-`T_I8`, figura `F_I3` |
+
+Las dos concordancias de nomenclatura viven en `config/` como CSV editables a mano
+(`reglas_ciiu_a_cou.csv` para las 111 actividades de 2023 y `reglas_ciiu_a_cou73.csv` para las 73
+de 2003), y se corrigen ahí, no en el código.
 
 ## Documentos
 
@@ -86,13 +116,23 @@ copia al proyecto. Están declaradas en el campo `reusable` del manifiesto de la
 | Casen 2022 y Casen 2024 | Personas, Chile | B, C, D, G |
 | ENIA, panel de seguimiento | Plantas de 10+ ocupados, 1995-2015 | E |
 | Atlas of Economic Complexity (HS92, 4 dígitos) | País-producto-año, 1995-2023 | D4 |
-| SII, Estadísticas de Empresas | Rama × tramo de venta, 2005-2024 | F, G |
+| SII, Estadísticas de Empresas | Rama × tramo de venta, 2005-2024 | F, G, H, I |
 | World Development Indicators (API, agosto 2026) | Macro, 1960-2025 | D5 |
+| Planillas del *cluster analysis* de la UAM | 73 y 111 actividades, 2003 y 2023 | I |
+| COU y MIP del Banco Central (referencia 2003 y 2018; COU 2023 del Anuario) | 73 y 111 actividades | I |
+| RETC, emisiones al aire de fuentes puntuales (MMA) | Establecimientos, 2023 | I |
 
 Dos advertencias de comparabilidad que están resueltas en el código y conviene no volver a
 descubrir: Casen 2024 estrenó una línea de pobreza que no empalma con las anteriores —se usa
 `pobreza_2013`— y los archivos del SII vienen en `.xlsb`, que Stata no lee, así que al lado de
 cada uno hay un `.csv` derivado.
 
-Pendiente de descargar: Cuentas Nacionales del Banco Central, para extender el bloque A más allá
-de 2018. Va al almacén general, no al proyecto.
+Y dos del bloque I, cada una documentada en el `LEEME.md` de su carpeta del almacén: la matriz de
+utilización intermedia hay que leerla a **precios de usuario** —es la valoración con la que cierra
+la identidad VBP − consumo intermedio = valor agregado—, y del RETC hay que usar la columna
+`emision_retc`, que es la validada por el MMA, y no `emision_total`, que es la estimación cruda y
+lleva el CO₂ nacional por encima del inventario del país.
+
+Pendiente de descargar: series anuales de Cuentas Nacionales del Banco Central (valor agregado y
+ocupados por actividad, 1996-2024), para extender el bloque A más allá de 2018. Van al almacén
+general, no al proyecto.

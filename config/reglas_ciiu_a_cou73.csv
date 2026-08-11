@@ -1,0 +1,177 @@
+prefijo,cou,nota
+# Concordancia CIIU4.CL (codigo de actividad del SII, 6 digitos) -> actividad de la
+# COU del Banco Central, compilacion de referencia 2003 (73 actividades).
+#
+# Gemela de `reglas_ciiu_a_cou.csv`, que hace lo mismo para las 111 actividades de 2023.
+# Se resuelve igual: gana el prefijo mas largo.
+#
+# DOS ADVERTENCIAS QUE HAY QUE ARRASTRAR AL TEXTO.
+#
+# 1. El registro del SII arranca en 2005 y el periodo 1 del ejercicio es 2003. El tamano
+#    medio de empresa del periodo 1 se calcula con 2005, que es el ano mas cercano
+#    disponible. No es el mismo ano y no se finge que lo sea.
+#
+# 2. La nomenclatura de 2003 es mas gruesa y agrupa cosas que la CIIU4.CL separa. Los
+#    servicios informaticos caen en «Actividades de servicios empresariales» (65), como
+#    en la CIIU rev.3; la gestion de desechos cae en «Otras actividades de servicios»
+#    (73); y la acuicultura no tiene actividad propia, va con «Pesca extractiva» (5).
+#    Esas agrupaciones son de la COU de 2003, no decisiones de este proyecto.
+
+# --- Agricultura, silvicultura y pesca (COU73 1-5) ---
+011,1,agricultura
+012,2,fruticultura
+0121,2,uva
+013,1,propagacion de plantas
+014,3,ganaderia
+015,1,cultivo combinado con cria
+016,1,apoyo a la agricultura
+017,3,caza
+02,4,silvicultura
+031,5,pesca extractiva
+032,5,acuicultura: sin actividad propia en la COU de 2003
+
+# --- Mineria (COU73 6-10) ---
+05,6,extraccion de carbon
+06,7,extraccion de petroleo
+04,9,mineria del cobre
+071,8,mineria del hierro
+072,10,otras actividades mineras
+08,10,otras minas y canteras
+09,10,servicios de apoyo a la mineria
+
+# --- Alimentos, bebidas y tabaco (COU73 11-25) ---
+101,11,produccion de carnes
+102,12,industria pesquera
+103,13,elaboracion de conservas
+104,14,elaboracion de aceite
+105,15,industria de la leche
+106,16,molineria
+107,20,productos alimenticios diversos
+107100,18,panaderias
+107200,19,azucar
+108,17,alimentos para animales
+110,24,bebidas no alcoholicas
+1101,21,alcoholes y licores
+110200,22,vino
+110300,23,cerveza
+1104,24,bebidas no alcoholicas
+120,25,tabaco
+
+# --- Textil, vestuario, cuero, madera, papel (COU73 26-32) ---
+13,26,productos textiles
+14,27,prendas de vestir
+151,28,cuero y sus productos
+152,29,calzado
+16,30,madera y sus productos
+17,31,papel
+18,32,imprentas y editoriales
+58,32,edicion
+
+# --- Quimica, caucho, plastico, minerales (COU73 33-39) ---
+19,33,elaboracion de combustible
+201,34,sustancias quimicas basicas
+203,34,fibras artificiales
+202,35,otros productos quimicos
+210,35,farmaceuticos
+221,36,productos de caucho
+222,37,productos de plastico
+231,38,vidrio y sus productos
+239,39,otros minerales no metalicos
+
+# --- Metalurgia, maquinaria y otras manufacturas (COU73 40-47) ---
+241,40,hierro y acero
+243100,40,fundicion de hierro y acero
+242,41,metales no ferrosos
+243200,41,fundicion de metales no ferrosos
+25,42,productos metalicos
+28,43,maquinaria y equipo no electrico
+26,44,informatica y electronica
+27,44,maquinaria y equipo electrico
+29,45,vehiculos automotores
+30,45,otro equipo de transporte
+310,46,muebles
+32,47,otras industrias manufactureras
+33,47,reparacion e instalacion de maquinaria
+
+# --- Electricidad, gas, agua y construccion (COU73 48-51) ---
+351,48,suministro de electricidad
+352,49,suministro de gas
+353,49,vapor y aire acondicionado
+360,50,suministro de agua
+41,51,construccion
+42,51,obras de ingenieria civil
+43,51,actividades especializadas de construccion
+
+# --- Comercio, hoteles y restaurantes (COU73 52-54) ---
+45,52,comercio automotriz
+46,52,comercio mayorista
+47,52,comercio minorista
+55,53,hoteles
+56,54,restaurantes
+
+# --- Transporte y comunicaciones (COU73 55-61) ---
+491,55,transporte ferroviario
+492,56,otros transportes terrestres de pasajeros
+492300,57,transporte camionero de carga
+493,60,transporte por tuberias
+50,58,transporte maritimo
+51,59,transporte aereo
+521,60,almacenamiento
+522,60,actividades conexas de transporte
+53,61,correo y mensajeria
+61,61,telecomunicaciones
+
+# --- Financiero, inmobiliario y servicios empresariales (COU73 62-66) ---
+64,62,intermediacion financiera
+66,62,auxiliares financieros
+65,63,companias de seguros
+681,64,actividades inmobiliarias
+681020,66,propiedad de vivienda
+682,64,inmobiliarias por retribucion
+62,65,servicios informaticos: van con empresariales en la COU de 2003
+63,65,servicios de informacion
+69,65,juridicas y contabilidad
+70,65,oficinas principales y consultoria
+71,65,arquitectura e ingenieria
+72,65,investigacion y desarrollo
+73,65,publicidad y estudios de mercado
+74,65,otras profesionales
+750,65,veterinarias
+77,65,alquiler y arrendamiento
+78,65,agencias de empleo
+79,65,agencias de viajes
+80,65,seguridad
+81,65,servicios a edificios
+82,65,administrativas y de apoyo
+
+# --- Gobierno, educacion y salud (COU73 67-71) ---
+84,67,administracion publica
+850,69,educacion privada
+850011,68,educacion publica preescolar
+850012,68,educacion publica escolar
+853,69,educacion superior privada
+853110,68,universidades publicas
+854,69,otros tipos de ensenanza
+855,69,apoyo a la ensenanza
+861,71,salud privada
+861010,70,salud publica
+862,71,medicos y odontologos
+869,71,otras atenciones de salud
+87,71,atencion en instituciones
+88,71,asistencia social
+
+# --- Esparcimiento y otros servicios (COU73 72-73) ---
+59,72,cine video y grabacion de sonido
+60,72,radio y television
+90,72,actividades creativas y artisticas
+910,72,bibliotecas archivos y museos
+920,72,juegos de azar
+93,72,deportes y esparcimiento
+37,73,evacuacion de aguas residuales
+38,73,desechos y reciclaje
+390,73,descontaminacion
+94,73,asociaciones
+95,73,reparacion de efectos personales
+960,73,otros servicios personales
+970,73,hogares como empleadores
+990,73,organizaciones extraterritoriales

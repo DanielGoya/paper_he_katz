@@ -1,0 +1,22 @@
+# Dependencias de la capa de conglomerados (`py/`).
+#
+# El resto del repo es Stata y no necesita nada de esto. Los cinco scripts de
+# `py/` replican y extienden el análisis de conglomerados de la UAM, que se
+# hace en Python porque `scipy.cluster.hierarchy` reproduce el `hclust` de R
+# —que es lo que ellos usaron— con enlace de Ward y distancia euclidiana.
+#
+# CÓMO SE INSTALA: `scripts/crear-entorno.ps1`, que crea `.venv` con el
+# intérprete fijado ahí (3.14) e instala esto dentro. Los scripts se invocan
+# por ruta absoluta al venv, nunca con el nombre `python`.
+#
+# NO instalar estas dependencias en el Python global. Los paquetes son por
+# intérprete, y qué intérprete resuelve el nombre `python` lo decide el PATH,
+# que cualquier instalador puede cambiar.
+pandas>=2.2
+numpy>=1.26
+scipy>=1.13
+openpyxl>=3.1
+matplotlib>=3.8
+# Los COU y MIP de la compilación de referencia 2003 del Banco Central vienen en
+# .xls antiguo (OLE2), no en .xlsx; openpyxl no los lee y pandas necesita xlrd.
+xlrd>=2.0

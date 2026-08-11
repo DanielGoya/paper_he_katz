@@ -1,0 +1,28 @@
+periodo,anio,cod_producto,grupo,desc_esperada,desc_cou,calza
+2,2023,27,energia,Carbón,Carbón,True
+2,2023,28,energia,Petróleo crudo,Petróleo crudo,True
+2,2023,29,energia,Gas natural,Gas natural,True
+2,2023,77,energia,Diésel,Diésel,True
+2,2023,78,energia,Gasolinas,Gasolinas,True
+2,2023,79,energia,Kerosene,Kerosene,True
+2,2023,80,energia,Aceites combustibles,Aceites combustibles,True
+2,2023,81,energia,Gas licuado y otros combustibles,Gas licuado y otros combustibles,True
+2,2023,119,energia,Energía y potencia eléctrica,Energía y potencia eléctrica,True
+2,2023,120,energia,Servicios de transmisión de electricidad,Servicios de transmisión de electricidad,True
+2,2023,121,energia,Servicios de distribución de electricidad,Servicios de distribución de electricidad,True
+2,2023,122,energia,Gas distribuido por ductos,Gas distribuido por ductos,True
+2,2023,104,tic,Computadores y sus componentes,Computadores y sus componentes,True
+2,2023,107,tic,Teléfonos móviles,Teléfonos móviles,True
+2,2023,152,tic,Servicios de telefonía móvil,Servicios de telefonía móvil,True
+2,2023,153,tic,Servicios de telefonía fija y de larga distancia,Servicios de telefonía fija y de larga distancia,True
+2,2023,154,tic,Otros servicios de telefonía,Otros servicios de telefonía,True
+2,2023,155,tic,Servicios informáticos,Servicios informáticos,True
+2,2023,105,tic_amplio,Otras maquinarias de oficina,Otras maquinarias de oficina,True
+2,2023,106,tic_amplio,Televisores,Televisores,True
+1,2003,6,energia,Carbón,Carbón,True
+1,2003,7,energia,Petróleo crudo,Petróleo crudo,True
+1,2003,33,energia,Combustible y otros productos del petróleo,Combustible y otros productos del petróleo,True
+1,2003,48,energia,Electricidad,Electricidad,True
+1,2003,49,energia,Gas,Gas,True
+1,2003,61,tic,Servicios de comunicaciones,Servicios de comunicaciones,True
+1,2003,44,tic_amplio,Maquinaria y equipo eléctrico,Maquinaria y equipo eléctrico,True

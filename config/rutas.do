@@ -66,11 +66,26 @@ global D_WDI_2021  "$ALMACEN/World Bank WDI/2021-12/65c64ccd-7a94-4001-b79c-ab52
 global ANIOS     "2000 2022 2024"
 global ANIO_INI  2000
 global ANIO_FIN  2024
+
+* ---------------------------------------------------------------------------
+* 3c. Bloque H: la capa de conglomerados, que corre en Python (ver py/)
+*     Estos punteros no los usa ningún .do todavía: están acá porque config/rutas.do
+*     es el inventario de dónde vive cada fuente, y py/rutas.py es su gemelo.
+* ---------------------------------------------------------------------------
+* Cuadros de oferta y utilización y matrices insumo-producto del Banco Central.
+* El COU de 2023 sale del Anuario de Cuentas Nacionales (27 meses de rezago), no de la
+* página de compilaciones de referencia. Los de 2003 son .xls antiguo. Ver el LEEME.
 global D_BCCH      "$ALMACEN/Banco Central de Chile"
+global D_BCCH_COU  "$D_BCCH/2026.08.11 COU y MIP"
+* Emisiones al aire de fuentes puntuales, MMA. Usar la columna `emision_retc`, que es la
+* validada, y no `emision_total`, que es la estimación cruda. Ver el LEEME.
+global D_RETC      "$ALMACEN/RETC/2026.08.11 Emisiones al aire fuentes puntuales"
 global D_ILO       "$ALMACEN/ILOSTAT"
 
 * ---------------------------------------------------------------------------
 * 4. Verificación: si algo no está, parar acá y no más adelante
+*    Se comprueban las fuentes de los bloques que corren en Stata. Las del bloque H
+*    las verifica py/rutas.py con la misma lógica.
 * ---------------------------------------------------------------------------
 capture confirm file "$D_ETD"
 if _rc {
@@ -78,6 +93,25 @@ if _rc {
     display as error "Revisar el ancla A_dropbox en config/rutas.do."
     exit 601
 }
+* Inventario de punteros. NO aborta: los bloques 05, 08 y 09 están escritos para saltarse
+* limpiamente si falta su fuente, y eso se respeta. Lo que hace es dejar constancia en el
+* log de qué resuelve y qué no, porque hasta el 2026-08-11 `D_BCCH` y `D_ILO` apuntaban a
+* carpetas inexistentes y nadie se enteró: la verificación de arriba sólo miraba el ETD.
+display as text _n "{hline 60}"
+display as text "Inventario de fuentes"
+foreach g in D_CASEN00 D_CASEN22 D_CASEN24 D_ATLAS_CP D_ATLAS_ECI D_ENIA ///
+             D_SII_RUBR D_SII_ACT D_WDI_CSV D_BCCH_COU D_RETC D_ILO {
+    capture confirm file "${`g'}"
+    local rc1 = _rc
+    capture confirm file "${`g'}/."
+    if `rc1' == 0 | _rc == 0 {
+        display as text "  ok      `g'"
+    }
+    else {
+        display as error "  FALTA   `g' -> ${`g'}"
+    }
+}
+display as text "{hline 60}" _n
 foreach d in "$OUT" "$INTER" "$SCRATCH" {
     capture mkdir "`d'"
 }
