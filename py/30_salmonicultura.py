@@ -52,9 +52,14 @@ import pandas as pd
 
 import rutas
 
+# DejaVu Sans y no Calibri, a diferencia de los otros bloques. Con Calibri en este equipo
+# matplotlib 3.11 calcula ancho cero para parte del texto y lo deja sin dibujar —se pierden
+# las etiquetas de la leyenda o las de los ejes, y cambia de una corrida a otra—. DejaVu Sans
+# viene con matplotlib y no falla. Vale la pena revisar si las figuras de los bloques A-I
+# tienen el mismo problema latente.
 plt.rcParams.update({
     "font.family": "sans-serif",
-    "font.sans-serif": ["Calibri", "DejaVu Sans"],
+    "font.sans-serif": ["DejaVu Sans"],
     "figure.dpi": 130,
     "axes.grid": True,
     "grid.alpha": 0.25,
@@ -533,7 +538,8 @@ def figura_concentracion(h: pd.DataFrame) -> None:
     e.barh(y, orden["indice_g_por_t"], color="#c0392b")
     e.set_yticks(y)
     e.set_yticklabels(orden["holding"], fontsize=7.5)
-    e.set_xlabel("gramos de antimicrobiano por tonelada cosechada, 2024")
+    e.set_xlabel("gramos de antimicrobiano por tonelada producida, 2024\n"
+                 "(cosechada más muerta: es el denominador con que lo publica Sernapesca)")
     e.axvline(302.33, color="#333333", ls="--", lw=1.0)
     e.text(312, len(orden) - 1.4, "media de la industria\n302 g/t", fontsize=8,
            color="#333333")
