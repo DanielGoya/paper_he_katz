@@ -18,7 +18,12 @@ param(
     [switch]$Recrear
 )
 
-$ErrorActionPreference = 'Stop'
+# 'Continue' a proposito, no 'Stop'. Con 'Stop', PowerShell 5.1 convierte en
+# NativeCommandError terminante cualquier linea que uv o pip escriban en stderr
+# —uv anuncia ahi el interprete que eligio— y aborta el script aunque el comando
+# haya salido con codigo 0. Verificado en ESCRITORIO el 2026-08-12. El control de
+# errores va por $LASTEXITCODE, que ya estaba en cada llamada.
+$ErrorActionPreference = 'Continue'
 
 # Version del interprete FIJADA para este repo. Vive aca, no en el PATH.
 $VersionPython = '3.14'
@@ -36,6 +41,13 @@ if ($Recrear -and (Test-Path -LiteralPath $venv)) {
 $uv = Get-Command uv -ErrorAction SilentlyContinue
 
 if (-not (Test-Path -LiteralPath $py)) {
+    # Una corrida abortada deja el directorio a medio armar, y uv se niega a
+    # escribir encima ("A directory already exists"). Si hay directorio pero no
+    # interprete, el entorno esta incompleto y se descarta.
+    if (Test-Path -LiteralPath $venv) {
+        Write-Host "== Entorno incompleto en $venv : se descarta y se rehace"
+        Remove-Item -LiteralPath $venv -Recurse -Force
+    }
     Write-Host "== Creando .venv con Python $VersionPython"
     if ($uv) {
         & uv venv --python $VersionPython $venv
