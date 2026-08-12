@@ -60,21 +60,31 @@ Cada do-file lleva en el encabezado la fuente, las decisiones de construcción y
 de medición. Los que lo ameritan traen chequeos internos que abortan la corrida si una identidad
 no cierra —la descomposición McMillan-Rodrik, la de Theil, la partición de los cuatro Chiles—.
 
-## El bloque I: la capa de conglomerados
+## La capa de Python: bloques I, J y K
 
-Corre **en Python, aparte del pipeline de Stata**, porque replica el `hclust` de R que usó el
-equipo de la UAM y `scipy.cluster.hierarchy` lo reproduce exactamente. Responde al pedido de
-Gabriela Dutrénit de incorporar variables de sustentabilidad, digitalización y tamaño de empresa.
+Corre **aparte del pipeline de Stata**. El bloque I existe en Python porque replica el `hclust` de
+R que usó el equipo de la UAM y `scipy.cluster.hierarchy` lo reproduce exactamente; los bloques J y
+K se le sumaron después y comparten el entorno.
 
 ```bash
 powershell -File "D:/repos/paper_he_katz/scripts/crear-entorno.ps1"
 ```
 
-y después, en orden, desde `py/`:
+Después, **desde `py/`** y en este orden (los scripts se invocan por ruta absoluta al intérprete
+del venv, nunca con el nombre `python`):
 
 ```bash
 D:/repos/paper_he_katz/.venv/Scripts/python.exe 20_replica_hclust.py
 ```
+
+y en seguida `21`, `22`, `23`, `24`, `25` (bloque I) · `30` (bloque J) · `41`, `42`, `43`, `44`
+(bloque K). Dentro de cada bloque el orden importa; entre bloques, no. `40_uam_metodo.py` no se
+corre solo: lo importan `42`, `43` y `44`.
+
+### Bloque I — la capa de conglomerados
+
+Responde al pedido de Gabriela Dutrénit de incorporar variables de sustentabilidad, digitalización
+y tamaño de empresa.
 
 | Archivo | Qué produce |
 |---|---|
@@ -84,10 +94,36 @@ D:/repos/paper_he_katz/.venv/Scripts/python.exe 20_replica_hclust.py
 | `py/22_variables_nuevas.py` | Intensidad energética, digitalización, encadenamientos de Rasmussen y tamaño medio de empresa, por actividad |
 | `py/23_cluster_ampliado.py` | Capa A (caracterización) y capa B (reagrupamiento), con placebo de dilución. Tablas `T_I1`-`T_I6`, figuras `F_I1`-`F_I2` |
 | `py/24_carbono_retc.py` | Validación física contra emisiones declaradas de CO₂. Tablas `T_I7`-`T_I8`, figura `F_I3` |
+| `py/25_unidad_de_observacion.py` | La unidad de observación del agrupamiento: agregar la manufactura o ponderar por empleo, y logaritmar las variables asimétricas. Tablas `T_I9`-`T_I12`, figura `F_I4` |
 
 Las dos concordancias de nomenclatura viven en `config/` como CSV editables a mano
 (`reglas_ciiu_a_cou.csv` para las 111 actividades de 2023 y `reglas_ciiu_a_cou73.csv` para las 73
 de 2003), y se corrigen ahí, no en el código.
+
+### Bloque J — la salmonicultura
+
+| Archivo | Qué produce |
+|---|---|
+| `py/30_salmonicultura.py` | Actualiza con fuentes vigentes las tablas y gráficas de la sección 4.1 del libro FCE de Katz, que se detienen entre 2002 y 2016: *catch-up* con Noruega, antimicrobianos, precios de exportación, concentración, escala, mortalidad y presupuesto de Sernapesca. Tablas `T_J1`-`T_J9`, figuras `F_J1`-`F_J7`, cada una con el original de Katz como primer panel |
+
+### Bloque K — los cuatro países
+
+Aplica los criterios de la UAM a Argentina, Brasil y México, y diagnostica si aparece en ellos algo
+comparable al problema del cobre chileno.
+
+| Archivo | Qué produce |
+|---|---|
+| `py/40_uam_metodo.py` | El método de la UAM como módulo reutilizable: construcción de las siete variables, estandarización, Ward —con y sin pesos—, y los índices de Rand. No se ejecuta solo |
+| `py/41_cou_multipais.py` | Extrae de las matrices insumo-producto de los cuatro países las siete magnitudes del ejercicio. Escribe `intermediate/cou_multipais.csv` |
+| `py/42_cluster_multipais.py` | Valida el método sobre Chile y corre la especificación de la UAM y la mejorada país por país. Tablas `T_K1`-`T_K4` |
+| `py/43_diagnostico_sectores.py` | Actividades atípicas, concentración exportadora y efecto de excluirlas. Tablas `T_K5`-`T_K8` |
+| `py/44_figura_multipais.py` | Figura comparativa `F_K1` |
+
+Los años no son los mismos en los cuatro países, y no por descuido: son los más cercanos a los de
+Chile entre los que publican **empleo y remuneraciones por actividad**, que es la restricción que
+manda. Brasil 2003 y 2021, México 2008 y 2018, Argentina sólo 1997. El detalle está en el memo
+`2026-08-12-conglomerados-en-los-cuatro-paises` del vault y en el `LEEME.md` de cada carpeta de
+datos.
 
 ## Documentos
 
@@ -100,6 +136,11 @@ la entidad, en `<vault_trabajo>\paper-he-katz`:
 | `2026-08-10-borrador-seccion-cuantitativa` | El texto para el capítulo |
 | `2026-08-10-memo-de-resultados` | Lectura de resultados y reparto entre capítulos |
 | `2026-08-10-contraste-narrativa-katz-vs-datos` | Afirmación por afirmación, para conversar con Jorge |
+| `2026-08-11-lectura-de-las-planillas-de-la-UAM` | Qué traen las planillas del *cluster analysis* y qué problemas tiene su especificación |
+| `2026-08-11-variables-adicionales-para-los-conglomerados` | Bloque I: las cuatro variables que pidió Dutrénit, construidas y corridas |
+| `notas de trabajo\2026-08-11-agregar-o-ponderar-los-conglomerados` | Bloque I: la unidad de observación, la ponderación y los logaritmos |
+| `notas de trabajo\2026-08-11-actualizacion-de-tablas-y-figuras-de-salmonicultura` | Bloque J |
+| `notas de trabajo\2026-08-12-conglomerados-en-los-cuatro-paises` | Bloque K |
 
 El estado del proyecto y las decisiones técnicas están en
 `<dropbox>\Trabajo\Paper HE Katz\MEMORY.md`.
@@ -121,6 +162,10 @@ copia al proyecto. Están declaradas en el campo `reusable` del manifiesto de la
 | Planillas del *cluster analysis* de la UAM | 73 y 111 actividades, 2003 y 2023 | I |
 | COU y MIP del Banco Central (referencia 2003 y 2018; COU 2023 del Anuario) | 73 y 111 actividades | I |
 | RETC, emisiones al aire de fuentes puntuales (MMA) | Establecimientos, 2023 | I |
+| Sernapesca, informes de antimicrobianos y sanitarios; *Norwegian Fish Health Report*; DIPRES, Ley de Presupuestos | Chile y Noruega, 2007-2025 | J |
+| FAO FishStat Aquaculture 2025.1.0 | País-especie-año | J |
+| Repositorio de COU y MIP de la CEPAL | Argentina, Brasil, Chile y México | K |
+| Tabelas de Recursos e Usos del IBGE (niveles 51 y 68) | 51 y 68 actividades, 2000-2021 | K |
 
 Dos advertencias de comparabilidad que están resueltas en el código y conviene no volver a
 descubrir: Casen 2024 estrenó una línea de pobreza que no empalma con las anteriores —se usa
