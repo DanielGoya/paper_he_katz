@@ -73,17 +73,27 @@ DESCRIPCION = {
 }
 
 
-def variables_de(sinfbcf: bool) -> list[str]:
-    return [v for v in uam.VARS_UAM if not (sinfbcf and v == "x_capital_trabajo")]
+def variables_de(sinfbcf: bool, comercio: bool = False) -> list[str]:
+    """Las variables de una especificacion.
+
+    `comercio=True` usa la reparametrizacion de `uam.VARS_COMERCIO`: seis
+    columnas en vez de siete, con apertura y balanza normalizada en lugar de las
+    TRES de comercio de la UAM, de las cuales una era funcion exacta de las otras
+    dos. `comercio=False` (el default) deja las siete originales, para no alterar
+    las planillas T_I22 a T_I25 ya escritas.
+    """
+    base = uam.VARS_COMERCIO if comercio else uam.VARS_UAM
+    return [v for v in base if not (sinfbcf and v == "x_capital_trabajo")]
 
 
 def matriz_z(d: pd.DataFrame, log: bool, peso: bool, balanza: str,
-             sinfbcf: bool) -> tuple[np.ndarray, np.ndarray | None]:
+             sinfbcf: bool, comercio: bool = False,
+             log1p_ratios: bool = True) -> tuple[np.ndarray, np.ndarray | None]:
     """Los puntajes z de una especificacion, y sus pesos (o None)."""
     x = uam.construir_variables(d, balanza=balanza)
-    variables = variables_de(sinfbcf)
+    variables = variables_de(sinfbcf, comercio)
     if log:
-        x = uam.transformar_logs(x, variables)
+        x = uam.transformar_logs(x, variables, log1p_ratios=log1p_ratios)
     m = x[variables].to_numpy(dtype=float)
     if not np.isfinite(m).all():
         malas = [v for i, v in enumerate(variables) if not np.isfinite(m[:, i]).all()]
@@ -355,6 +365,7 @@ def medias_en_niveles(d: pd.DataFrame, cl: np.ndarray) -> pd.DataFrame:
                                  (s["empleo"] / tot["empleo"])
     t["impo / VBP"] = s["impo"] / s["vbp"]
     t["expo / VBP"] = s["expo"] / s["vbp"]
+    t["(X+M) / VBP"] = (s["expo"] + s["impo"]) / s["vbp"]
     t["(X-M) / (X+M)"] = np.where((s["expo"] + s["impo"]) > 0,
                                   (s["expo"] - s["impo"]) / (s["expo"] + s["impo"]), 0.0)
     t["VA / VBP"] = s["valor_agrega"] / s["vbp"]
@@ -372,7 +383,7 @@ def medias_en_z(d: pd.DataFrame, cl: np.ndarray, **opc) -> pd.DataFrame:
     que el propio algoritmo minimiza, no un promedio recalculado aparte.
     """
     z, pesos = matriz_z(d, **opc)
-    variables = variables_de(opc["sinfbcf"])
+    variables = variables_de(opc["sinfbcf"], opc.get("comercio", False))
     w = np.ones(len(d)) if pesos is None else np.asarray(pesos, dtype=float)
     filas = {}
     for c in np.unique(cl):

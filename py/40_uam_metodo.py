@@ -23,7 +23,10 @@ son las que se prueban aca para los otros paises:
     ponderacion          por empleo, en momentos y en el criterio de Ward
     logaritmos           en productividad y remuneracion media
 
-Este archivo NO se ejecuta solo: lo importan 41, 42 y 43.
+Y la reparametrizacion del bloque de comercio (2026-08-13, ver VARS_COMERCIO),
+que reemplaza TRES columnas por DOS sin perder informacion.
+
+Este archivo NO se ejecuta solo: lo importan 41, 42, 43, 45 y 46.
 """
 
 from __future__ import annotations
@@ -50,6 +53,40 @@ VARS_COU = [
     'x_balanza_com',
     'x_ingreso_interno',
     'x_oferta_externa',
+]
+
+# --------------------------------------------------------------------------
+# La reparametrizacion del bloque de comercio (decidida el 2026-08-13)
+# --------------------------------------------------------------------------
+# Las siete de la UAM traen TRES columnas de comercio —impo/VBP, expo/VBP y la
+# balanza— y con la balanza corregida la tercera es funcion EXACTA de las otras
+# dos: con o = X/VBP y d = M/VBP, el VBP se cancela y
+#
+#     (X-M)/(X+M) == (o-d)/(o+d)          (verificado, error 2e-16)
+#     (X-M)/VBP   == o - d                (exactamente lineal: R2 = 1,0000 y
+#                                          tercer valor singular = 0)
+#
+# O sea el bloque tiene rango 2, no 3, pero se lleva 3/7 = 42,9 % de la inercia
+# porque estandarizar iguala la varianza de cada columna: una direccion se cuenta
+# dos veces. Eso explica que sacar los coeficientes de comercio mueva mas la
+# particion que sacar la productividad (bloque K.4).
+#
+# La salida no es podar sino REPARAMETRIZAR: (o, d) -> (apertura, balanza) es
+# biyectiva —o = a(1+b)/2, d = a(1-b)/2— asi que no se pierde nada, y separa los
+# dos conceptos que hoy estan superpuestos:
+#
+#     x_apertura       (X+M)/VBP     cuanto comercia la actividad
+#     x_balanza_norm   (X-M)/(X+M)   en que direccion, acotado en [-1, 1]
+#
+# Las dos son ratios, asi que la invariancia exacta a la desagregacion se
+# conserva (se verifica con la prueba de clones en 46).
+VARS_COMERCIO = [
+    'x_prod_trabajo',
+    'x_capital_trabajo',
+    'x_remunera_prom',
+    'x_ingreso_interno',
+    'x_apertura',
+    'x_balanza_norm',
 ]
 
 
@@ -79,27 +116,43 @@ def construir_variables(d: pd.DataFrame, balanza: str = 'nivel') -> pd.DataFrame
     # especificacion reducida de Argentina 2021.
     d['x_capital_trabajo_vbp'] = d['fbcf'] / vbp
 
+    # Reparametrizacion del bloque de comercio (ver VARS_COMERCIO). Se calculan
+    # siempre: son columnas nuevas y no alteran ninguna especificacion previa.
+    # Una actividad sin comercio en ninguna direccion tiene apertura 0 y no es ni
+    # exportadora ni importadora: le corresponde el 0 de la balanza, no un NaN.
+    tot_com = d['expo'] + d['impo']
+    d['x_apertura'] = tot_com / vbp
+    d['x_balanza_norm'] = np.where(tot_com > 0,
+                                   (d['expo'] - d['impo']) / tot_com.where(tot_com > 0), 0.0)
+
     if balanza == 'nivel':
         d['x_balanza_com'] = d['expo'] - d['impo']
     elif balanza == 'vbp':
         d['x_balanza_com'] = (d['expo'] - d['impo']) / vbp
     elif balanza == 'norm':
-        # Una actividad sin comercio en ninguna direccion no es ni exportadora ni
-        # importadora: le corresponde el 0 del indice, no un dato faltante.
-        tot = d['expo'] + d['impo']
-        d['x_balanza_com'] = np.where(tot > 0, (d['expo'] - d['impo']) / tot.where(tot > 0), 0.0)
+        d['x_balanza_com'] = d['x_balanza_norm']
     else:
         raise ValueError(f'balanza desconocida: {balanza}')
 
     return d
 
 
-def transformar_logs(d: pd.DataFrame, variables: list[str]) -> pd.DataFrame:
+def transformar_logs(d: pd.DataFrame, variables: list[str],
+                     log1p_ratios: bool = True) -> pd.DataFrame:
     """Logaritma productividad y remuneracion media; log1p en los ratios con ceros.
 
     Las estrictamente positivas van en log. Las que tienen ceros pero no
     negativos van en log1p. Las que tienen negativos —FBCF por ocupado, que la
     COU asigna por producto— se dejan como estan: no admiten logaritmo.
+
+    `x_balanza_norm` NUNCA se transforma: ya esta acotada en [-1, 1] y es
+    aproximadamente simetrica, que es lo que el logaritmo vendria a arreglar.
+
+    ⚠ `log1p_ratios=False` deja los ratios de comercio en nivel. Existe porque
+    Chen y Roth (2024, QJE) muestran que log(1+y) no es invariante a las
+    unidades: la constante 1 es arbitraria y afecta la particion. En un ratio el
+    problema es mas debil que en una magnitud —no hay unidad que elegir— pero no
+    desaparece, asi que la sensibilidad se mide y se reporta (46).
     """
     d = d.copy()
     for v in ('x_prod_trabajo', 'x_remunera_prom'):
@@ -111,9 +164,10 @@ def transformar_logs(d: pd.DataFrame, variables: list[str]) -> pd.DataFrame:
             continue
         piso = pos.min() / 2.0
         d[v] = np.log(s.clip(lower=piso))
-    for v in ('x_demanda_externa', 'x_oferta_externa'):
-        if v in variables and (d[v].dropna() >= 0).all():
-            d[v] = np.log1p(d[v])
+    if log1p_ratios:
+        for v in ('x_demanda_externa', 'x_oferta_externa', 'x_apertura'):
+            if v in variables and (d[v].dropna() >= 0).all():
+                d[v] = np.log1p(d[v])
     return d
 
 
