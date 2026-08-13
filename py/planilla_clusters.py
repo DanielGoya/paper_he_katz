@@ -272,23 +272,115 @@ def escribir_bloque(ws, b: pd.DataFrame, col0: int, titulo: str, fila_titulo: in
                 c.font = Font(color=ROJO, italic=True)
 
 
+def escribir_tabla(ws, t: pd.DataFrame, fila: int, col0: int, titulo: str) -> int:
+    """Escribe una tabla con el indice como primera columna. Devuelve la fila
+    siguiente a la ultima escrita."""
+    ws.cell(fila, col0, titulo).font = Font(bold=True, size=10)
+    fila += 1
+    for j, h in enumerate([t.index.name or ""] + list(t.columns)):
+        c = ws.cell(fila, col0 + j, h)
+        c.font = Font(bold=True, color="FFFFFF", size=9)
+        c.fill = PatternFill("solid", fgColor="404040")
+        c.alignment = Alignment(horizontal="center", wrap_text=True)
+    for i, (idx, r) in enumerate(t.iterrows()):
+        f = fila + 1 + i
+        c = ws.cell(f, col0, int(idx) if isinstance(idx, (int, float)) else idx)
+        c.font = Font(bold=True)
+        c.fill = PatternFill("solid", fgColor=COLORES[(int(idx) - 1) % len(COLORES)]
+                             if isinstance(idx, (int, float)) else "FFFFFF")
+        c.alignment = Alignment(horizontal="center")
+        for j, v in enumerate(r):
+            cc = ws.cell(f, col0 + 1 + j, None if pd.isna(v) else float(v))
+            cc.number_format = "0.00"
+            cc.border = Border(left=FINO, right=FINO, top=FINO, bottom=FINO)
+    return fila + len(t) + 2
+
+
 def escribir_hoja(wb: Workbook, nombre: str, notas: list[tuple[str, str]],
-                  bloques: list[tuple[pd.DataFrame, str]], con_marca: bool = False) -> None:
-    """`notas` son (texto, color); `bloques` son (tabla, titulo), izquierda y derecha."""
+                  bloques: list[tuple[pd.DataFrame, str]], con_marca: bool = False,
+                  tablas: list[list[tuple[pd.DataFrame, str]]] | None = None,
+                  ancho_tablas: int = 14) -> None:
+    """`notas` son (texto, color); `bloques` son (tabla, titulo), izquierda y derecha.
+
+    `tablas` son las medias por conglomerado de cada periodo. Van al pie de la
+    hoja y no debajo de cada bloque, porque el bloque de la derecha ocupa las
+    columnas 7 a 11 y una tabla de medias no cabe en las cinco de la izquierda.
+    """
     ws = wb.create_sheet(nombre)
     ws.cell(1, 1, nombre).font = Font(bold=True, size=13)
     for i, (texto, color) in enumerate(notas):
         ws.cell(2 + i, 1, texto).font = Font(italic=True, size=9, color=color)
     fila_titulo = 2 + len(notas) + 1
 
+    fin = fila_titulo
     for (b, titulo), col0 in zip(bloques, (COL1, COL2)):
         escribir_bloque(ws, b, col0, titulo, fila_titulo, con_marca)
+        fin = max(fin, fila_titulo + 1 + len(b) + 3 + b["cluster"].nunique())
+
+    if tablas:
+        for grupo, col0 in zip(tablas, (COL1, COL1 + ancho_tablas)):
+            f = fin + 2
+            for t, titulo in grupo:
+                f = escribir_tabla(ws, t, f, col0, titulo)
 
     for col0 in (COL1, COL2):
         for off, w in zip(range(5), (8, 8, 8, 11, 46)):
             ws.column_dimensions[get_column_letter(col0 + off)].width = w
     ws.column_dimensions[get_column_letter(COL2 - 1)].width = 3
     ws.freeze_panes = ws.cell(fila_titulo + 2, 1)
+
+
+def medias_en_niveles(d: pd.DataFrame, cl: np.ndarray) -> pd.DataFrame:
+    """Las siete variables por conglomerado, en unidades legibles.
+
+    Los ratios se calculan como COCIENTE DE LAS SUMAS, no como promedio de los
+    cocientes: la productividad de un grupo es su valor agregado total sobre su
+    empleo total. Productividad y remuneracion media van como indice con la
+    economia = 100, que es lo unico comparable entre 2003 y 2023.
+    """
+    g = d.assign(_c=cl).groupby("_c")
+    s = g[["valor_agrega", "vbp", "remunera", "empleo", "fbcf", "expo", "impo"]].sum()
+    tot = d[["valor_agrega", "empleo", "expo", "remunera"]].sum()
+
+    t = pd.DataFrame(index=s.index)
+    t["n"] = g.size()
+    t["% empleo"] = 100 * s["empleo"] / tot["empleo"]
+    t["% VA"] = 100 * s["valor_agrega"] / tot["valor_agrega"]
+    t["% expo"] = 100 * s["expo"] / tot["expo"]
+    t["productividad (=100)"] = 100 * (s["valor_agrega"] / tot["valor_agrega"]) / \
+                                (s["empleo"] / tot["empleo"])
+    t["remun. media (=100)"] = 100 * (s["remunera"] / tot["remunera"]) / \
+                               (s["empleo"] / tot["empleo"])
+    t["FBCF / ocupado (=100)"] = 100 * (s["fbcf"] / s["fbcf"].sum()) / \
+                                 (s["empleo"] / tot["empleo"])
+    t["impo / VBP"] = s["impo"] / s["vbp"]
+    t["expo / VBP"] = s["expo"] / s["vbp"]
+    t["(X-M) / (X+M)"] = np.where((s["expo"] + s["impo"]) > 0,
+                                  (s["expo"] - s["impo"]) / (s["expo"] + s["impo"]), 0.0)
+    t["VA / VBP"] = s["valor_agrega"] / s["vbp"]
+    t["masa salarial / VA"] = s["remunera"] / s["valor_agrega"]
+    t.index.name = "conglomerado"
+    return t
+
+
+def medias_en_z(d: pd.DataFrame, cl: np.ndarray, **opc) -> pd.DataFrame:
+    """Los centroides en puntajes z: el equivalente de la hoja
+    `estadisticas_cluster` de los libros 3a y 3b.
+
+    Son las mismas variables transformadas y estandarizadas con que se agrupo, y
+    ponderadas por empleo si la especificacion pondera — o sea, los centroides
+    que el propio algoritmo minimiza, no un promedio recalculado aparte.
+    """
+    z, pesos = matriz_z(d, **opc)
+    variables = variables_de(opc["sinfbcf"])
+    w = np.ones(len(d)) if pesos is None else np.asarray(pesos, dtype=float)
+    filas = {}
+    for c in np.unique(cl):
+        m = cl == c
+        filas[int(c)] = (w[m, None] * z[m]).sum(axis=0) / w[m].sum()
+    t = pd.DataFrame(filas, index=variables).T.sort_index()
+    t.index.name = "conglomerado"
+    return t
 
 
 def diagnostico(b: pd.DataFrame, d: pd.DataFrame) -> tuple[str, str, int]:
