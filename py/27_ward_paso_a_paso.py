@@ -337,10 +337,183 @@ def figura(paquetes: dict) -> None:
     plt.close(fig)
 
 
+# --------------------------------------------------------------------------
+# 5. Los arboles, en Mermaid: la copa del dendrograma, legible
+# --------------------------------------------------------------------------
+
+def miembros_de(Z: np.ndarray, n: int) -> dict[int, list[int]]:
+    """Hojas que cuelgan de cada nodo del dendrograma."""
+    m = {i: [i] for i in range(n)}
+    for i, (a, b, _, _) in enumerate(Z):
+        m[n + i] = m[int(a)] + m[int(b)]
+    return m
+
+
+def copa(Z: np.ndarray, n: int, k: int) -> tuple[list[int], list[int]]:
+    """Los k-1 nodos de las ultimas fusiones y las k hojas que quedan colgando.
+
+    Las alturas de Ward son monotonas, asi que la copa del arbol son
+    literalmente las ultimas k-1 filas de Z: cortar en k grupos es no dibujar
+    nada de lo que pasa por debajo.
+    """
+    internos = [n + len(Z) - i for i in range(1, k)]
+    hojas = []
+    for nodo in internos:
+        a, b = int(Z[nodo - n][0]), int(Z[nodo - n][1])
+        hojas += [x for x in (a, b) if x not in internos]
+    return internos, hojas
+
+
+def perfil(d: pd.DataFrame, idx: list[int], tot: dict) -> dict:
+    g = d.iloc[idx]
+    emp = g['empleo'].sum()
+    return {
+        'n': len(idx),
+        'empleo': 100 * emp / tot['empleo'],
+        'prod': (g['valor_agrega'].sum() / emp) / tot['prod'] * 100 if emp else np.nan,
+        'expo': 100 * g['expo'].sum() / tot['expo'],
+        'salarial': 100 * g['remunera'].sum() / g['valor_agrega'].sum(),
+        'lider': g.sort_values('empleo', ascending=False)['desc'].iloc[0],
+        'top': g.sort_values('empleo', ascending=False)['desc'].tolist(),
+    }
+
+
+def limpiar(t: str, corte: int = 42) -> str:
+    """Mermaid se atraganta con parentesis, comillas y corchetes dentro de una etiqueta."""
+    t = str(t).replace('(', '-').replace(')', '').replace('"', "'")
+    t = t.replace('[', '').replace(']', '').replace('#', 'n.')
+    if len(t) > corte:
+        # Cortar en el espacio anterior: media palabra en una caja es peor que un puntito.
+        t = t[:corte].rsplit(' ', 1)[0] + '...'
+    return t.strip()
+
+
+def coma(x: float, dec: int = 1) -> str:
+    """Separador decimal espanol. El .md lo lee una persona, no un parser."""
+    return f'{x:.{dec}f}'.replace('.', ',')
+
+
+def arbol_mermaid(d: pd.DataFrame, Z: np.ndarray, hist: pd.DataFrame,
+                  k: int, tot: dict) -> str:
+    n = len(d)
+    miembros = miembros_de(Z, n)
+    internos, hojas = copa(Z, n, k)
+    lineas = ['```mermaid', 'graph TD']
+    # Un nodo interno por fusion, etiquetado con lo que esa fusion cuesta.
+    for nodo in sorted(internos):
+        paso = nodo - n + 1
+        f = hist.iloc[paso - 1]
+        grupos_antes = int(f['grupos tras la fusion']) + 1
+        p = perfil(d, miembros[nodo], tot)
+        lineas.append(
+            f'  N{nodo}{{{{"k {grupos_antes} → {grupos_antes - 1}<br/>'
+            f'cuesta {coma(100 * f["coste de Ward"] / hist.attrs["inercia"])}% '
+            f'de la inercia<br/>'
+            f'manda {limpiar(f["variable dominante"], 24)} · '
+            f'{f["contrib dominante (%)"]:.0f}%"}}}}')
+    for nodo in sorted(hojas):
+        p = perfil(d, miembros[nodo], tot)
+        clase = 'baja' if p['prod'] < 80 else ('alta' if p['prod'] > 130 else 'media')
+        if p['expo'] > 40:
+            clase = 'enclave'
+        lineas.append(
+            f'  N{nodo}["<b>{limpiar(p["lider"], 44)}</b><br/>'
+            f'{p["n"]} act. · {coma(p["empleo"])}% del empleo<br/>'
+            f'productividad {p["prod"]:.0f} · {p["expo"]:.0f}% de las expo<br/>'
+            f'masa salarial {p["salarial"]:.0f}% del VA"]:::{clase}')
+    for nodo in sorted(internos):
+        a, b = int(Z[nodo - n][0]), int(Z[nodo - n][1])
+        lineas.append(f'  N{nodo} --> N{a}')
+        lineas.append(f'  N{nodo} --> N{b}')
+    lineas += [
+        '  classDef baja fill:#f7d7d2,stroke:#b23c17,color:#000',
+        '  classDef media fill:#f2f2f2,stroke:#777,color:#000',
+        '  classDef alta fill:#d6e8f7,stroke:#1f5c8b,color:#000',
+        '  classDef enclave fill:#fdefc3,stroke:#a07c00,color:#000',
+        '```',
+    ]
+    return '\n'.join(lineas)
+
+
+def detalle_hojas(d: pd.DataFrame, Z: np.ndarray, k: int, tot: dict) -> str:
+    n = len(d)
+    miembros = miembros_de(Z, n)
+    _, hojas = copa(Z, n, k)
+    partes = []
+    for nodo in sorted(hojas, key=lambda x: -perfil(d, miembros[x], tot)['empleo']):
+        p = perfil(d, miembros[nodo], tot)
+        cabeza = (f'**{p["lider"]}** — {p["n"]} act., {coma(p["empleo"])}% del empleo, '
+                  f'productividad {p["prod"]:.0f}')
+        lista = '; '.join(p['top'][:8])
+        if p['n'] > 8:
+            lista += f'; … y {p["n"] - 8} más'
+        partes.append(f'- {cabeza}\n    - {lista}')
+    return '\n'.join(partes)
+
+
+def escribir_arboles(paquetes: dict, datos: dict, k: int = 8) -> None:
+    """Un .md con los cuatro arboles en Mermaid, para leerlos en Obsidian."""
+    destino = rutas.DOCS / 'notas de trabajo' / '2026-08-13-arboles-de-ward.md'
+    orden = ['UAM 2023', 'mejorada 2023', 'UAM 2003', 'mejorada 2003']
+    orden = [c for c in orden if c in paquetes]
+    doc = [
+        '---',
+        'entidad: paper-he-katz',
+        'rama: trabajo',
+        'tipo: sintesis',
+        f'fecha: {date.today().isoformat()}',
+        'maquina: ESCRITORIO',
+        'bloque: I',
+        'tags:',
+        '  - paper-he-katz',
+        '---',
+        '',
+        '# La copa del dendrograma de Ward, en los dos ejercicios',
+        '',
+        'Generado por `py/27_ward_paso_a_paso.py --mermaid`. **No editar a mano**: se reescribe '
+        'en cada corrida.',
+        '',
+        f'Cada árbol muestra las **últimas {k - 1} fusiones**, es decir la copa que va de {k} '
+        'grupos a uno.',
+        'Las alturas de Ward son monótonas, así que eso es exactamente lo que queda de dibujar '
+        'un dendrograma completo',
+        'cuando se corta en ' + str(k) + ' grupos: nada de lo que pasa por debajo cambia '
+        'ninguna partición con k ≤ ' + str(k) + '.',
+        '',
+        'Los hexágonos son fusiones —con lo que cuestan y qué variable las manda—; las cajas son '
+        'los grupos que quedan colgando.',
+        'Color de las cajas: rojo, productividad bajo 80 (economía = 100); azul, sobre 130; '
+        'amarillo, más del 40 % de las exportaciones del país.',
+        '',
+        '> [!warning] Cómo leerlo, para no leerlo al revés',
+        '> El árbol se recorre **de arriba hacia abajo para deshacer fusiones**. La raíz es la '
+        'última fusión, la más cara.',
+        '> La partición en k grupos que reporta el capítulo es el conjunto de cajas que quedan '
+        'al cortar los k−1 hexágonos de más arriba.',
+        '',
+    ]
+    for clave in orden:
+        Z, hist = paquetes[clave]
+        d, tot = datos[clave]
+        etiqueta = ('**Especificación de la UAM** — siete variables sin ponderar, balanza en '
+                    'niveles' if clave.startswith('UAM') else
+                    '**Contrapropuesta** — balanza normalizada, ponderación por empleo y '
+                    'logaritmos')
+        doc += [f'## {clave}', '', etiqueta + f', {len(d)} actividades.', '',
+                arbol_mermaid(d, Z, hist, k, tot), '',
+                '<details><summary>Qué actividades hay en cada caja</summary>', '',
+                detalle_hojas(d, Z, k, tot), '', '</details>', '']
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    destino.write_text('\n'.join(doc), encoding='utf-8')
+    print(f'Escrito el .md con los arboles en:\n  {destino}')
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--demo', action='store_true',
                     help='imprime el ejemplo chico paso a paso y termina')
+    ap.add_argument('--mermaid', type=int, nargs='?', const=8, default=8,
+                    help='cuantos grupos deja colgando el arbol del .md (por defecto 8)')
     args = ap.parse_args()
 
     rutas.preparar_directorios()
@@ -349,13 +522,18 @@ def main() -> int:
         demo()
         return 0
 
-    paquetes, hojas_hist, hojas_k = {}, {}, {}
+    paquetes, hojas_hist, hojas_k, datos = {}, {}, {}, {}
     for periodo in (1, 2):
         for spec in ESPECIFICACIONES:
             d, anio, z, w = preparar(periodo, spec)
             Z, hist = ward_trazado(z, w, list(d['desc']), uam.VARS_UAM)
             clave = f'{spec} {anio}'
             paquetes[clave] = (Z, hist)
+            datos[clave] = (d, {
+                'empleo': d['empleo'].sum(),
+                'expo': d['expo'].sum(),
+                'prod': d['valor_agrega'].sum() / d['empleo'].sum(),
+            })
             hojas_hist[clave[:31]] = hist
             hojas_k[clave[:31]] = resumen_por_k(hist)
             print(f'\n== {clave}: {len(d)} actividades, {len(d) - 1} fusiones ==')
@@ -372,6 +550,7 @@ def main() -> int:
         for nombre, h in hojas_k.items():
             h.to_excel(wri, sheet_name=nombre, index=False)
     figura(paquetes)
+    escribir_arboles(paquetes, datos, k=args.mermaid)
 
     print(f'\nEscritas T_I20, T_I21 y F_I8 en {OUT}')
     return 0
