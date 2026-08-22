@@ -55,6 +55,7 @@ fallar más adelante.
 | `src/08_productividad_sii.do` | F | Productividad y salarios por rama × tamaño de empresa, y el puente de tramo de venta a banda de empleo (SII 2005-2024) |
 | `src/09_moderno_productividad.do` | G | El «Chile moderno» definido por productividad, en tres capas |
 | `src/10_productividad_enia.do` | H | Productividad con valor agregado real de planta y no con ventas, y quién se queda con la nómina (ENIA 1995-2015) |
+| `src/11_conglomerados_chile.do` | I | Do-file autónomo y expositivo: réplica del Ward chileno, reincorporación del cobre y sensibilidades una por una (comercio, logs, ponderación, PAM, universo, *k*, agregación y clones) |
 
 Cada do-file lleva en el encabezado la fuente, las decisiones de construcción y las advertencias
 de medición. Los que lo ameritan traen chequeos internos que abortan la corrida si una identidad
@@ -85,6 +86,11 @@ corre solo: lo importan `42`, `43` y `44`.
 
 Responde al pedido de Gabriela Dutrénit de incorporar variables de sustentabilidad, digitalización
 y tamaño de empresa.
+
+La implementación que produjo los resultados del bloque vive en Python. Para mostrar el
+procedimiento íntegramente en Stata 15, `src/11_conglomerados_chile.do` traduce la réplica y las
+principales sensibilidades a Stata/Mata. Corre de forma autónoma y no forma parte de
+`src/00_master.do`; puede detenerse después de cada enfoque activando `PAUSAR` al comienzo.
 
 | Archivo | Qué produce |
 |---|---|

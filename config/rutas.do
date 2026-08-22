@@ -82,16 +82,26 @@ global D_BCCH_COU  "$D_BCCH/2026.08.11 COU y MIP"
 global D_RETC      "$ALMACEN/RETC/2026.08.11 Emisiones al aire fuentes puntuales"
 global D_ILO       "$ALMACEN/ILOSTAT"
 
+* Planillas recibidas de la UAM para la réplica de conglomerados de Chile.
+global D_UAM          "$RAW/UAM_Dutrenit"
+global D_UAM_INSUMO   "$D_UAM/Chile_datos_Aug08_26_v1.xlsx"
+global D_UAM_HCLUST1  "$D_UAM/3a_resultados_hclust_Chile_1_v1.xlsx"
+global D_UAM_HCLUST2  "$D_UAM/3b_resultados_hclust_Chile_2_v1.xlsx"
+
 * ---------------------------------------------------------------------------
 * 4. Verificación: si algo no está, parar acá y no más adelante
 *    Se comprueban las fuentes de los bloques que corren en Stata. Las del bloque H
 *    las verifica py/rutas.py con la misma lógica.
 * ---------------------------------------------------------------------------
-capture confirm file "$D_ETD"
-if _rc {
-    display as error "No se encuentra el ETD en: $D_ETD"
-    display as error "Revisar el ancla A_dropbox en config/rutas.do."
-    exit 601
+* El pipeline maestro exige ETD. Los do-files autónomos pueden declarar
+* SOLO_CONGLOMERADOS=1 y validar únicamente sus propias fuentes más abajo.
+if "$SOLO_CONGLOMERADOS" != "1" {
+    capture confirm file "$D_ETD"
+    if _rc {
+        display as error "No se encuentra el ETD en: $D_ETD"
+        display as error "Revisar el ancla A_dropbox en config/rutas.do."
+        exit 601
+    }
 }
 * Inventario de punteros. NO aborta: los bloques 05, 08 y 09 están escritos para saltarse
 * limpiamente si falta su fuente, y eso se respeta. Lo que hace es dejar constancia en el
@@ -100,7 +110,8 @@ if _rc {
 display as text _n "{hline 60}"
 display as text "Inventario de fuentes"
 foreach g in D_CASEN00 D_CASEN22 D_CASEN24 D_ATLAS_CP D_ATLAS_ECI D_ENIA ///
-             D_SII_RUBR D_SII_ACT D_WDI_CSV D_BCCH_COU D_RETC D_ILO {
+             D_SII_RUBR D_SII_ACT D_WDI_CSV D_BCCH_COU D_RETC D_ILO ///
+             D_UAM_INSUMO D_UAM_HCLUST1 D_UAM_HCLUST2 {
     capture confirm file "${`g'}"
     local rc1 = _rc
     capture confirm file "${`g'}/."
